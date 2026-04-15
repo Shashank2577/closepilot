@@ -7,7 +7,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { registerDealStoreTools } from './tools/deal-store.js';
+import { dealStoreToolDefinitions, handleDealStoreToolCall, registerDealStoreTools } from './tools/deal-store.js';
 import { registerGmailTools } from './tools/gmail.js';
 import { registerCalendarTools } from './tools/calendar.js';
 import { registerDriveTools } from './tools/drive.js';
@@ -41,48 +41,7 @@ async function main() {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
-        // Deal Store tools
-        {
-          name: 'create_deal',
-          description: 'Create a new deal in the system',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              input: {
-                type: 'object',
-                description: 'Deal input data',
-              },
-            },
-            required: ['input'],
-          },
-        },
-        {
-          name: 'get_deal',
-          description: 'Get a deal by ID',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              dealId: {
-                type: 'string',
-                description: 'Deal ID',
-              },
-            },
-            required: ['dealId'],
-          },
-        },
-        {
-          name: 'update_deal_stage',
-          description: 'Update deal stage',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              dealId: { type: 'string' },
-              stage: { type: 'string' },
-              reason: { type: 'string' },
-            },
-            required: ['dealId', 'stage'],
-          },
-        },
+        ...dealStoreToolDefinitions,
         // Add more tool definitions...
       ],
     };
@@ -91,6 +50,11 @@ async function main() {
   // Handle call tool request
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
+
+    const dealStoreResult = await handleDealStoreToolCall(name, args);
+    if (dealStoreResult) {
+      return dealStoreResult;
+    }
 
     // Tool handlers are registered separately, this just routes to them
     // The actual implementation is in the tool registration files
