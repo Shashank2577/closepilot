@@ -11,7 +11,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting not configured yet'",
-    "test": "echo 'Tests not configured yet'"
+    "test": "vitest run src/"
   },
   "dependencies": {
     "@closepilot/core": "workspace:*",
@@ -20,8 +20,12 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@hono/node-server": "^1.19.14",
     "@types/node": "^20.11.0",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.4"
   }
 }

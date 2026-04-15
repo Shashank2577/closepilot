@@ -13,6 +13,14 @@ export async function createDeal(input: NewDeal): Promise<Deal> {
   throw new Error('Not implemented - Jules J-101 will implement');
 }
 
+export async function getDeals(filters?: any, pagination?: any, sorting?: any): Promise<Deal[]> {
+  throw new Error('Not implemented - Jules J-101 will implement');
+}
+
+export async function getDealStats(): Promise<Record<string, number>> {
+  throw new Error('Not implemented - Jules J-101 will implement');
+}
+
 export async function getDeal(dealId: string): Promise<Deal | null> {
   throw new Error('Not implemented - Jules J-101 will implement');
 }
