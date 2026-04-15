@@ -1,2 +1,8 @@
-// Placeholder - database schema will be added in CC-05
-export {};
+// Database connection
+export * from './db';
+
+// Schema definitions
+export * from './schema';
+
+// Query stubs
+export * from './queries';
