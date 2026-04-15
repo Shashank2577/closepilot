@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/agents/enrichment && pnpm build\",\"description\":\"Build enrichment agent package\"}",
-  "error": "Exit code 1\n\n> @closepilot/agent-enrichment@0.1.0 build /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/agents/enrichment\n> tsc\n\nerror TS18003: No inputs were found in config file '/Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/agents/enrichment/tsconfig.json'. Specified 'include' paths were '[\"src/**/*\"]' and 'exclude' paths were '[\"node_modules\",\"dist\"]'.\n ELIFECYCLE  Command failed with exit code 2.\n[rerun: b25]",
-  "timestamp": "2026-04-15T17:42:37.976Z",
-  "retry_count": 15
+  "tool_input_preview": "{\"command\":\"git add packages/web/app/approvals/page.tsx packages/db/src/queries/approvals.ts packages/api/src/routes/approvals.ts packages/web/components/approvals/ && git status --short\",\"description...",
+  "error": "Exit code 128\nfatal: pathspec 'packages/web/components/approvals/' did not match any files\n[rerun: b22]",
+  "timestamp": "2026-04-15T17:42:47.002Z",
+  "retry_count": 16
 }
