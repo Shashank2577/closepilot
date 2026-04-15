@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"pnpm --filter @closepilot/web build\",\"description\":\"Build web package after fixing params\"}",
-  "error": "Exit code 1\n\n> @closepilot/web@0.1.0 build /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/web\n> next build\n\n  ▲ Next.js 15.0.0\n\n   Creating an optimized production build ...\n ✓ Compiled successfully\n   Linting and checking validity of types ...\nFailed to compile.\n\n./app/deals/[id]/page.tsx:19:28\nType error: Property 'id' does not exist on type 'Promise<{ id: string; }>'.\n\n\u001b[0m \u001b[90m 17 |\u001b[39m         \u001b[33m<\u001b[39m\u001b[33m/\u001b[39m\u001b[33mh2\u001b[39m\u001b[33m>\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 18 |\u001b[39m       ...",
-  "timestamp": "2026-04-15T17:03:33.227Z",
-  "retry_count": 9
+  "tool_input_preview": "{\"command\":\"cd /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/api && npx tsc --noEmit src/routes/deals.ts 2>&1\",\"description\":\"Type check only deals.ts\"}",
+  "error": "Exit code 2\n../../node_modules/.pnpm/hono@3.12.12/node_modules/hono/dist/types/context.d.ts(55,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.\n../../node_modules/.pnpm/hono@3.12.12/node_modules/hono/dist/types/hono-base.d.ts(28,5): error TS18028: Private identifiers are only available when targeting ECMAScript 2015 and higher.\n../../node_modules/.pnpm/hono@3.12.12/node_modules/hono/dist/types/request.d.ts(17,5): error TS18028: Private identifi...",
+  "timestamp": "2026-04-15T17:42:17.071Z",
+  "retry_count": 13
 }

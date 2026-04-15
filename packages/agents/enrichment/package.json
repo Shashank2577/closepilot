@@ -1,0 +1,27 @@
+{
+  "name": "@closepilot/agent-enrichment",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Enrichment Agent for Closepilot - Researches companies and prospects",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "echo 'Tests not configured yet'"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@closepilot/mcp-client": "workspace:*",
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "cheerio": "^1.0.0-rc.12",
+    "puppeteer": "^22.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.0"
+  }
+}
