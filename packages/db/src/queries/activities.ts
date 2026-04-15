@@ -1,25 +1,48 @@
 import { activities } from '../schema';
 import { getDb } from '../db';
+import type { NewActivity, Activity } from '../schema';
+import { eq, desc } from 'drizzle-orm';
 
 /**
- * Query stubs for activity operations
- * These will be implemented by Jules session J-101
+ * Create a new activity log entry
  */
-
 export async function createActivity(data: {
   dealId: number;
   agentType: string;
   activityType: string;
   description: string;
   metadata?: string;
-}) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+}): Promise<Activity> {
+  const db = getDb();
+  const [activity] = await db
+    .insert(activities)
+    .values(data as NewActivity)
+    .returning();
+  return activity;
 }
 
-export async function getActivitiesByDeal(dealId: number) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+/**
+ * Get all activities for a specific deal
+ */
+export async function getActivitiesByDeal(dealId: number): Promise<Activity[]> {
+  const db = getDb();
+  const results = await db
+    .select()
+    .from(activities)
+    .where(eq(activities.dealId, dealId))
+    .orderBy(desc(activities.createdAt));
+  return results;
 }
 
-export async function getRecentActivities(limit = 50) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+/**
+ * Get recent activities across all deals
+ */
+export async function getRecentActivities(limit = 50): Promise<Activity[]> {
+  const db = getDb();
+  const results = await db
+    .select()
+    .from(activities)
+    .orderBy(desc(activities.createdAt))
+    .limit(limit);
+  return results;
 }
