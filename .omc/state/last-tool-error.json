@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"pnpm --filter @closepilot/mcp-client build\",\"description\":\"Build mcp-client package after fixes\"}",
-  "error": "Exit code 1\n\n> @closepilot/mcp-client@0.1.0 build /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/mcp-client\n> tsc\n\nsrc/tools/drive.ts(42,70): error TS2352: Conversion of type 'DocumentGenerationRequest' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.\n  Index signature for type 'string' is missing in type 'DocumentGenerationRequest'.\n/Users/shashanks...",
-  "timestamp": "2026-04-15T17:00:25.720Z",
-  "retry_count": 2
+  "tool_input_preview": "{\"command\":\"pnpm --filter @closepilot/mcp-server build\",\"description\":\"Build mcp-server package\"}",
+  "error": "Exit code 1\n\n> @closepilot/mcp-server@0.1.0 build /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/mcp-server\n> tsc\n\nsrc/tools/calendar.ts(12,7): error TS2353: Object literal may only specify known properties, and 'method' does not exist in type 'ZodObject<{ method: ZodLiteral<string>; }, UnknownKeysParam, ZodTypeAny, { method: string; }, { method: string; }>'.\nsrc/tools/calendar.ts(14,64): error TS2339: Property 'params' does not exist on type '{ method: string; }'.\nsrc/tools/c...",
+  "timestamp": "2026-04-15T17:01:01.029Z",
+  "retry_count": 3
 }
