@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"pnpm --filter @closepilot/api build\",\"description\":\"Build api package\"}",
-  "error": "Exit code 1\n\n> @closepilot/api@0.1.0 build /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/api\n> tsc\n\nsrc/index.ts(15,5): error TS2769: No overload matches this call.\n  Overload 1 of 12, '(...handlers: MiddlewareHandler<Env, never, {}>[]): Hono<Env, {}, \"/\">', gave the following error.\n    Argument of type 'string' is not assignable to parameter of type 'MiddlewareHandler<Env, never, {}>'.\n  Overload 2 of 12, '(handlers_0: MiddlewareHandler<Env, never, {}>, handlers_1: Middlewa...",
-  "timestamp": "2026-04-15T17:02:42.832Z",
-  "retry_count": 7
+  "tool_input_preview": "{\"command\":\"pnpm --filter @closepilot/web build\",\"description\":\"Build web package after fixing params\"}",
+  "error": "Exit code 1\n\n> @closepilot/web@0.1.0 build /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/web\n> next build\n\n  ▲ Next.js 15.0.0\n\n   Creating an optimized production build ...\n ✓ Compiled successfully\n   Linting and checking validity of types ...\nFailed to compile.\n\n./app/deals/[id]/page.tsx:19:28\nType error: Property 'id' does not exist on type 'Promise<{ id: string; }>'.\n\n\u001b[0m \u001b[90m 17 |\u001b[39m         \u001b[33m<\u001b[39m\u001b[33m/\u001b[39m\u001b[33mh2\u001b[39m\u001b[33m>\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 18 |\u001b[39m       ...",
+  "timestamp": "2026-04-15T17:03:33.227Z",
+  "retry_count": 9
 }
