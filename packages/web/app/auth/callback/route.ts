@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exchangeCodeForTokens, isAuthenticated } from '@/lib/auth/oauth';
+import { exchangeCodeForTokens } from '@/lib/auth/oauth';
 
 export async function GET(request: NextRequest) {
   try {

@@ -9,9 +9,10 @@ export interface Session {
 /**
  * Get current session information
  */
-export function getSession(): Session | null {
-  const accessToken = getAccessToken();
-  const tokenExpiry = cookies().get('token_expiry')?.value;
+export async function getSession(): Promise<Session | null> {
+  const accessToken = await getAccessToken();
+  const cookieStore = await cookies();
+  const tokenExpiry = cookieStore.get('token_expiry')?.value;
 
   if (!accessToken || !tokenExpiry) {
     return null;
@@ -26,8 +27,8 @@ export function getSession(): Session | null {
 /**
  * Check if session is valid (not expired)
  */
-export function isSessionValid(): boolean {
-  const session = getSession();
+export async function isSessionValid(): Promise<boolean> {
+  const session = await getSession();
   if (!session) {
     return false;
   }
@@ -38,15 +39,15 @@ export function isSessionValid(): boolean {
 /**
  * Require authentication - throw error if not authenticated
  */
-export function requireAuth(): Session {
-  const session = getSession();
+export async function requireAuth(): Promise<Session> {
+  const session = await getSession();
 
   if (!session) {
     throw new Error('Authentication required');
   }
 
-  if (!isSessionValid()) {
-    clearAuthCookies();
+  if (!(await isSessionValid())) {
+    await clearAuthCookies();
     throw new Error('Session expired');
   }
 
@@ -57,14 +58,14 @@ export function requireAuth(): Session {
  * Refresh token if needed (for server-side use)
  */
 export async function refreshIfNeeded(): Promise<string | null> {
-  const session = getSession();
+  const session = await getSession();
 
   if (!session) {
     return null;
   }
 
   // Token is still valid
-  if (isSessionValid()) {
+  if (await isSessionValid()) {
     return session.accessToken;
   }
 
