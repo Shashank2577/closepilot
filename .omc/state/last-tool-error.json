@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"pnpm --filter @closepilot/db build\",\"description\":\"Build db package after fixing schema references\"}",
-  "error": "Exit code 1\n\n> @closepilot/db@0.1.0 build /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/db\n> tsc\n\nsrc/queries/index.ts(6,1): error TS2308: Module './deals' has already exported a member named 'getPendingApprovals'. Consider explicitly re-exporting to resolve the ambiguity.\n/Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/db:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @closepilot/db@0.1.0 build: `tsc`\nExit status 2\n[rerun: b40]",
-  "timestamp": "2026-04-15T17:02:09.516Z",
-  "retry_count": 6
+  "tool_input_preview": "{\"command\":\"pnpm --filter @closepilot/api build\",\"description\":\"Build api package\"}",
+  "error": "Exit code 1\n\n> @closepilot/api@0.1.0 build /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/api\n> tsc\n\nsrc/index.ts(15,5): error TS2769: No overload matches this call.\n  Overload 1 of 12, '(...handlers: MiddlewareHandler<Env, never, {}>[]): Hono<Env, {}, \"/\">', gave the following error.\n    Argument of type 'string' is not assignable to parameter of type 'MiddlewareHandler<Env, never, {}>'.\n  Overload 2 of 12, '(handlers_0: MiddlewareHandler<Env, never, {}>, handlers_1: Middlewa...",
+  "timestamp": "2026-04-15T17:02:42.832Z",
+  "retry_count": 7
 }
