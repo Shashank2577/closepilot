@@ -1,0 +1,23 @@
+{
+  "name": "@closepilot/agent-scoping",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Scoping Agent - Analyzes requirements and defines project scope",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@closepilot/mcp-client": "workspace:*",
+    "@anthropic-ai/sdk": "^0.27.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
