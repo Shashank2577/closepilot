@@ -22,7 +22,7 @@ export class DriveTools {
     const response = await this.client.callTool('list_templates', {
       type,
     });
-    return response.content as DocumentTemplate[];
+    return JSON.parse(response.content[0].text) as DocumentTemplate[];
   }
 
   /**
@@ -30,7 +30,7 @@ export class DriveTools {
    */
   async getTemplate(templateId: string): Promise<DocumentTemplate | null> {
     const response = await this.client.callTool('get_template', { templateId });
-    return response.content as DocumentTemplate | null;
+    return JSON.parse(response.content[0].text) as DocumentTemplate | null;
   }
 
   /**
@@ -40,7 +40,7 @@ export class DriveTools {
     request: DocumentGenerationRequest
   ): Promise<DocumentGenerationResult> {
     const response = await this.client.callTool('generate_document', request as unknown as Record<string, unknown>);
-    return response.content as DocumentGenerationResult;
+    return JSON.parse(response.content[0].text) as DocumentGenerationResult;
   }
 
   /**
@@ -48,7 +48,7 @@ export class DriveTools {
    */
   async getDocument(documentId: string): Promise<GeneratedDocument | null> {
     const response = await this.client.callTool('get_document', { documentId });
-    return response.content as GeneratedDocument | null;
+    return JSON.parse(response.content[0].text) as GeneratedDocument | null;
   }
 
   /**
@@ -62,7 +62,7 @@ export class DriveTools {
       documentId,
       status,
     });
-    return response.content as GeneratedDocument;
+    return JSON.parse(response.content[0].text) as GeneratedDocument;
   }
 
   /**
@@ -73,7 +73,7 @@ export class DriveTools {
       name,
       parentId,
     });
-    return response.content as DriveFolder;
+    return JSON.parse(response.content[0].text) as DriveFolder;
   }
 
   /**
@@ -81,7 +81,7 @@ export class DriveTools {
    */
   async listFolder(folderId: string): Promise<DocumentMetadata[]> {
     const response = await this.client.callTool('list_drive_folder', { folderId });
-    return response.content as DocumentMetadata[];
+    return JSON.parse(response.content[0].text) as DocumentMetadata[];
   }
 
   /**
@@ -97,7 +97,7 @@ export class DriveTools {
       destinationFolderId,
       newTitle,
     });
-    return response.content as DocumentMetadata;
+    return JSON.parse(response.content[0].text) as DocumentMetadata;
   }
 
   /**
@@ -122,6 +122,6 @@ export class DriveTools {
     const response = await this.client.callTool('get_drive_download_url', {
       documentId,
     });
-    return response.content as string;
+    return JSON.parse(response.content[0].text) as string;
   }
 }
