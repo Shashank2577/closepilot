@@ -43,7 +43,7 @@ async function generateCodeChallenge(codeVerifier: string): Promise<string> {
 /**
  * Generate OAuth state with PKCE code verifier
  */
-export function generateOAuthState(redirectUri?: string): string {
+export async function generateOAuthState(redirectUri?: string): Promise<string> {
   const codeVerifier = generateRandomString(128);
   const state: OAuthState = {
     codeVerifier,
@@ -51,7 +51,8 @@ export function generateOAuthState(redirectUri?: string): string {
   };
 
   // Store state in cookie for callback verification
-  cookies().set('oauth_state', JSON.stringify(state), {
+  const cookieStore = await cookies();
+  cookieStore.set('oauth_state', JSON.stringify(state), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -75,8 +76,9 @@ export async function generateAuthUrl(redirectUri?: string): Promise<string> {
   const redirectUriFinal = redirectUri ||
     `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'}/auth/callback`;
 
-  const state = generateOAuthState(redirectUri);
-  const codeVerifier = JSON.parse(cookies().get('oauth_state')?.value || '{}').codeVerifier;
+  const state = await generateOAuthState(redirectUri);
+  const cookieStore = await cookies();
+  const codeVerifier = JSON.parse(cookieStore.get('oauth_state')?.value || '{}').codeVerifier;
   const codeChallenge = await generateCodeChallenge(codeVerifier);
 
   const params = new URLSearchParams({
@@ -110,7 +112,8 @@ export async function exchangeCodeForTokens(
   }
 
   // Verify state
-  const stateCookie = cookies().get('oauth_state')?.value;
+  const cookieStore = await cookies();
+  const stateCookie = cookieStore.get('oauth_state')?.value;
   if (!stateCookie) {
     throw new Error('Invalid OAuth state: state cookie missing');
   }
@@ -138,13 +141,13 @@ export async function exchangeCodeForTokens(
     throw new Error(`Token exchange failed: ${error}`);
   }
 
-  const tokens: TokenResponse = await response.json();
+  const tokens = await response.json() as TokenResponse;
 
   // Store tokens securely
   await storeTokens(tokens);
 
   // Clear state cookie
-  cookies().delete('oauth_state');
+  cookieStore.delete('oauth_state');
 
   return tokens;
 }
@@ -153,6 +156,7 @@ export async function exchangeCodeForTokens(
  * Store tokens in httpOnly cookies
  */
 async function storeTokens(tokens: TokenResponse): Promise<void> {
+  const cookieStore = await cookies();
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -161,37 +165,40 @@ async function storeTokens(tokens: TokenResponse): Promise<void> {
     maxAge: 60 * 60 * 24 * 7, // 7 days
   };
 
-  cookies().set('access_token', tokens.access_token, cookieOptions);
+  cookieStore.set('access_token', tokens.access_token, cookieOptions);
 
   if (tokens.refresh_token) {
-    cookies().set('refresh_token', tokens.refresh_token, cookieOptions);
+    cookieStore.set('refresh_token', tokens.refresh_token, cookieOptions);
   }
 
-  cookies().set('token_expiry', String(Date.now() + tokens.expires_in * 1000), cookieOptions);
+  cookieStore.set('token_expiry', String(Date.now() + tokens.expires_in * 1000), cookieOptions);
 }
 
 /**
  * Get current access token from cookies
  */
-export function getAccessToken(): string | undefined {
-  return cookies().get('access_token')?.value;
+export async function getAccessToken(): Promise<string | undefined> {
+  const cookieStore = await cookies();
+  return cookieStore.get('access_token')?.value;
 }
 
 /**
  * Check if user is authenticated
  */
-export function isAuthenticated(): boolean {
-  return !!cookies().get('access_token')?.value;
+export async function isAuthenticated(): Promise<boolean> {
+  const cookieStore = await cookies();
+  return !!cookieStore.get('access_token')?.value;
 }
 
 /**
  * Clear all auth cookies
  */
-export function clearAuthCookies(): void {
-  cookies().delete('access_token');
-  cookies().delete('refresh_token');
-  cookies().delete('token_expiry');
-  cookies().delete('oauth_state');
+export async function clearAuthCookies(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete('access_token');
+  cookieStore.delete('refresh_token');
+  cookieStore.delete('token_expiry');
+  cookieStore.delete('oauth_state');
 }
 
 /**

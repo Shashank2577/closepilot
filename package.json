@@ -26,6 +26,7 @@
   "author": "Closepilot Team",
   "license": "MIT",
   "devDependencies": {
+    "@types/luxon": "^3.7.1",
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"
   },
@@ -33,5 +34,8 @@
     "node": ">=20.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@8.14.0"
+  "packageManager": "pnpm@8.14.0",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0"
+  }
 }
