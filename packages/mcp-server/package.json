@@ -1,0 +1,27 @@
+{
+  "name": "@closepilot/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deal Store MCP server",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "echo 'Tests not configured yet'"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@closepilot/db": "workspace:*",
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "googleapis": "^133.0.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}

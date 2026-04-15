@@ -1,0 +1,27 @@
+{
+  "name": "@closepilot/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hono-based REST API",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "echo 'Tests not configured yet'"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@closepilot/db": "workspace:*",
+    "hono": "^3.11.11",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

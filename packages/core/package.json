@@ -1,0 +1,20 @@
+{
+  "name": "@closepilot/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Core type definitions for Closepilot",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

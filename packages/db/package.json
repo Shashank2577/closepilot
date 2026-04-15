@@ -1,0 +1,28 @@
+{
+  "name": "@closepilot/db",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Database schema and queries with Drizzle ORM",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "db:studio": "drizzle-kit studio",
+    "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "echo 'Tests not configured yet'"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "drizzle-orm": "^0.29.3",
+    "postgres": "^3.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "drizzle-kit": "^0.20.9",
+    "typescript": "^5.3.3"
+  }
+}

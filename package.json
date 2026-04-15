@@ -1,0 +1,37 @@
+{
+  "name": "closepilot-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Closepilot: Autonomous B2B Deal Flow Engine for Service Businesses",
+  "scripts": {
+    "dev": "pnpm --filter \"@closepilot/*\" --parallel dev",
+    "build": "pnpm --filter \"@closepilot/*\" build",
+    "test": "pnpm --filter \"@closepilot/*\" --parallel test",
+    "lint": "pnpm --filter \"@closepilot/*\" --parallel lint",
+    "db:studio": "pnpm --filter @closepilot/db db:studio",
+    "db:push": "pnpm --filter @closepilot/db db:push",
+    "db:migrate": "pnpm --filter @closepilot/db db:migrate",
+    "mcp:dev": "pnpm --filter @closepilot/mcp-server dev",
+    "api:dev": "pnpm --filter @closepilot/api dev",
+    "web:dev": "pnpm --filter @closepilot/web dev",
+    "typecheck": "pnpm --filter \"@closepilot/*\" --parallel tsc --noEmit"
+  },
+  "keywords": [
+    "b2b",
+    "deal-flow",
+    "automation",
+    "agents",
+    "mcp"
+  ],
+  "author": "Closepilot Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.14.0"
+}

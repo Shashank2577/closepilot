@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"tree -L 2 -I 'node_modules|dist' packages/\",\"description\":\"Verify package structure\"}",
+  "error": "Exit code 127\n(eval):1: command not found: tree\n[rerun: b23]",
+  "timestamp": "2026-04-15T16:58:29.999Z",
+  "retry_count": 1
+}
