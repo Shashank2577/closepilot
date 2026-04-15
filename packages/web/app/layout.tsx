@@ -1,15 +1,20 @@
 import type { Metadata } from 'next';
+import { getAccessToken } from '@/lib/auth/oauth';
+import { AuthNav } from '@/components/auth/AuthNav';
 
 export const metadata: Metadata = {
   title: 'Closepilot - Autonomous B2B Deal Flow',
   description: 'Automated deal flow engine for service businesses',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const accessToken = await getAccessToken();
+  const isAuthenticated = !!accessToken;
+
   return (
     <html lang="en">
       <body>
@@ -18,14 +23,7 @@ export default function RootLayout({
             <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between">
                 <h1 className="text-xl font-bold text-gray-900">Closepilot</h1>
-                <nav className="flex space-x-4">
-                  <a href="/" className="text-gray-700 hover:text-gray-900">
-                    Dashboard
-                  </a>
-                  <a href="/approvals" className="text-gray-700 hover:text-gray-900">
-                    Approvals
-                  </a>
-                </nav>
+                <AuthNav isAuthenticated={isAuthenticated} />
               </div>
             </div>
           </header>
