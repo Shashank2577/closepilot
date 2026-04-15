@@ -1,7 +1,7 @@
 {
   "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"git add packages/web/app/approvals/page.tsx packages/db/src/queries/approvals.ts packages/api/src/routes/approvals.ts packages/web/components/approvals/ && git status --short\",\"description...",
-  "error": "Exit code 128\nfatal: pathspec 'packages/web/components/approvals/' did not match any files\n[rerun: b22]",
-  "timestamp": "2026-04-15T17:42:47.002Z",
-  "retry_count": 16
+  "tool_input_preview": "{\"command\":\"git checkout -b jules/J-115-activity-streaming 2>&1 || git checkout jules/J-115-activity-streaming 2>&1\",\"description\":\"Switch to J-115 branch\"}",
+  "error": "Exit code 1\nfatal: a branch named 'jules/J-115-activity-streaming' already exists\nerror: Your local changes to the following files would be overwritten by checkout:\n\t.omc/state/agent-replay-ac6853b9-ab22-42d0-8087-4e1206f102c2.jsonl\n\t.omc/state/subagent-tracking.json\nPlease commit your changes or stash them before you switch branches.\nAborting\n[rerun: b33]",
+  "timestamp": "2026-04-15T17:43:48.134Z",
+  "retry_count": 1
 }
