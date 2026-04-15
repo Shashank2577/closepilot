@@ -1,0 +1,16 @@
+# Code Owners
+
+# Default code owners for the repository
+* @closepilot/maintainers
+
+# Package-specific owners
+/packages/core/ @closepilot/core-team
+/packages/mcp-client/ @closepilot/mcp-team
+/packages/mcp-server/ @closepilot/mcp-team
+/packages/db/ @closepilot/db-team
+/packages/api/ @closepilot/api-team
+/packages/web/ @closepilot/web-team
+
+# Documentation
+/README.md @closepilot/maintainers
+/docs/ @closepilot/documentation-team
