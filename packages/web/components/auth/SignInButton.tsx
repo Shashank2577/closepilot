@@ -1,12 +1,28 @@
-import React from 'react';
+'use client';
 
-export function SignInButton() {
+import { Button } from '@/components/ui/button';
+
+interface SignInButtonProps {
+  redirectPath?: string;
+  className?: string;
+}
+
+export function SignInButton({ redirectPath, className }: SignInButtonProps) {
+  const handleSignIn = () => {
+    const params = new URLSearchParams();
+    if (redirectPath) {
+      params.set('redirect', redirectPath);
+    }
+    const redirectUrl = params.toString()
+      ? `/auth/signin?${params.toString()}`
+      : '/auth/signin';
+
+    window.location.href = redirectUrl;
+  };
+
   return (
-    <a
-      href="/auth/signin"
-      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-    >
+    <Button onClick={handleSignIn} className={className}>
       Sign in with Google
-    </a>
+    </Button>
   );
 }

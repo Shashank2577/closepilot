@@ -1,21 +1,51 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+/**
+ * Middleware to protect routes that require authentication
+ */
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const accessToken = request.cookies.get('access_token')?.value;
+  const tokenExpiry = request.cookies.get('token_expiry')?.value;
+  const path = request.nextUrl.pathname;
 
-  // Define public routes
-  const publicRoutes = ['/', '/auth/signin', '/auth/callback'];
+  // Public routes that don't require authentication
+  const publicRoutes = ['/auth/signin', '/auth/callback'];
+  const isPublicRoute = publicRoutes.some(route => path.startsWith(route));
 
-  if (publicRoutes.includes(pathname)) {
+  if (isPublicRoute) {
     return NextResponse.next();
   }
 
-  // Check for access token
-  const accessToken = request.cookies.get('access_token')?.value;
+  // Check if token exists and is not expired
+  const isTokenValid = accessToken && tokenExpiry && Date.now() < parseInt(tokenExpiry);
 
-  if (!accessToken) {
-    return NextResponse.redirect(new URL('/auth/signin', request.url));
+  if (!isTokenValid) {
+    // Redirect to signin if accessing protected route
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/signin';
+
+    // Add redirect parameter to return after login
+    if (path !== '/') {
+      url.searchParams.set('redirect', path);
+    }
+
+    return NextResponse.redirect(url);
+  }
+
+  // Token is expired, attempt refresh
+  if (tokenExpiry && Date.now() >= parseInt(tokenExpiry)) {
+    const refreshToken = request.cookies.get('refresh_token')?.value;
+
+    if (refreshToken) {
+      // Note: We can't await in middleware, so we redirect to a refresh handler
+      // or let the client handle refresh
+      // For now, redirect to signin
+      const url = request.nextUrl.clone();
+      url.pathname = '/auth/signin';
+      url.searchParams.set('redirect', path);
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();
@@ -24,12 +54,12 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * Match all request paths except:
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public folder
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

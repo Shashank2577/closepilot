@@ -1,50 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exchangeCodeForTokens } from '../../../lib/auth/oauth';
+import { exchangeCodeForTokens, isAuthenticated } from '@/lib/auth/oauth';
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-
-  const storedState = request.cookies.get('oauth_state')?.value;
-  const codeVerifier = request.cookies.get('oauth_code_verifier')?.value;
-
-  if (!code || !state || !storedState || !codeVerifier || state !== storedState) {
-    return NextResponse.json({ error: 'Invalid or missing state/code' }, { status: 400 });
-  }
-
   try {
-    const tokens = await exchangeCodeForTokens(code, codeVerifier);
+    const searchParams = request.nextUrl.searchParams;
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    const error = searchParams.get('error');
 
-    const response = NextResponse.redirect(new URL('/', request.url));
-
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax' as const,
-      path: '/',
-    };
-
-    response.cookies.set('access_token', tokens.access_token, {
-      ...cookieOptions,
-      maxAge: tokens.expires_in,
-    });
-
-    if (tokens.refresh_token) {
-      response.cookies.set('refresh_token', tokens.refresh_token, {
-        ...cookieOptions,
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-      });
+    // Handle OAuth errors
+    if (error) {
+      console.error('OAuth error:', error);
+      return NextResponse.redirect(
+        new URL(`/?error=${encodeURIComponent(error)}`, request.url)
+      );
     }
 
-    // Clear the OAuth state cookies
-    response.cookies.delete('oauth_state');
-    response.cookies.delete('oauth_code_verifier');
+    if (!code || !state) {
+      return NextResponse.redirect(
+        new URL('/?error=missing_parameters', request.url)
+      );
+    }
 
-    return response;
+    // Exchange code for tokens
+    await exchangeCodeForTokens(code, state);
+
+    // Redirect to dashboard or original destination
+    return NextResponse.redirect(new URL('/', request.url));
   } catch (error) {
-    console.error('Failed to exchange token:', error);
-    return NextResponse.json({ error: 'Failed to exchange token' }, { status: 500 });
+    console.error('OAuth callback error:', error);
+    return NextResponse.redirect(
+      new URL('/?error=auth_failed', request.url)
+    );
   }
 }

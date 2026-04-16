@@ -1,41 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { refreshAccessToken } from '../../../lib/auth/oauth';
+import { cookies } from 'next/headers';
 
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+/**
+ * Refresh access token using refresh token
+ * This route is called internally by middleware when token is expired
+ */
 export async function POST(request: NextRequest) {
-  const refreshToken = request.cookies.get('refresh_token')?.value;
-
-  if (!refreshToken) {
-    return NextResponse.json({ error: 'No refresh token available' }, { status: 400 });
-  }
-
   try {
-    const tokens = await refreshAccessToken(refreshToken);
+    const refreshToken = cookies().get('refresh_token')?.value;
 
-    const response = NextResponse.json({ success: true });
-
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax' as const,
-      path: '/',
-    };
-
-    response.cookies.set('access_token', tokens.access_token, {
-      ...cookieOptions,
-      maxAge: tokens.expires_in,
-    });
-
-    if (tokens.refresh_token) {
-      response.cookies.set('refresh_token', tokens.refresh_token, {
-        ...cookieOptions,
-        maxAge: 30 * 24 * 60 * 60, // 30 days
-      });
+    if (!refreshToken) {
+      return NextResponse.json(
+        { error: 'No refresh token available' },
+        { status: 401 }
+      );
     }
 
-    return response;
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Google OAuth credentials are not configured');
+    }
+
+    const response = await fetch(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Token refresh failed: ${error}`);
+    }
+
+    const tokens = await response.json();
+
+    // Update access token cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    };
+
+    cookies().set('access_token', tokens.access_token, cookieOptions);
+    cookies().set(
+      'token_expiry',
+      String(Date.now() + tokens.expires_in * 1000),
+      cookieOptions
+    );
+
+    // Update refresh token if a new one is provided
+    if (tokens.refresh_token) {
+      cookies().set('refresh_token', tokens.refresh_token, cookieOptions);
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to refresh token:', error);
-    return NextResponse.json({ error: 'Failed to refresh token' }, { status: 500 });
+    console.error('Token refresh error:', error);
+    return NextResponse.json(
+      { error: 'Token refresh failed' },
+      { status: 401 }
+    );
   }
 }

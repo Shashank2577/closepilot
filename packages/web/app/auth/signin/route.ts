@@ -1,25 +1,19 @@
-import { NextResponse } from 'next/server';
-import { generatePKCE, generateState, getAuthorizationUrl } from '../../../lib/auth/oauth';
+import { NextRequest, NextResponse } from 'next/server';
+import { generateAuthUrl } from '@/lib/auth/oauth';
 
-export async function GET() {
-  const { verifier, challenge } = generatePKCE();
-  const state = generateState();
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const redirectUri = searchParams.get('redirect') || undefined;
 
-  const authUrl = getAuthorizationUrl(state, challenge);
+    const authUrl = await generateAuthUrl(redirectUri);
 
-  const response = NextResponse.redirect(authUrl);
-
-  const isProduction = process.env.NODE_ENV === 'production';
-  const cookieOptions = {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax' as const,
-    path: '/',
-    maxAge: 10 * 60, // 10 minutes
-  };
-
-  response.cookies.set('oauth_state', state, cookieOptions);
-  response.cookies.set('oauth_code_verifier', verifier, cookieOptions);
-
-  return response;
+    return NextResponse.redirect(authUrl);
+  } catch (error) {
+    console.error('Error generating auth URL:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate authorization URL' },
+      { status: 500 }
+    );
+  }
 }
