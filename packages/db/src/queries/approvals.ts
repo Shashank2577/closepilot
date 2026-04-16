@@ -1,9 +1,9 @@
+import { eq, desc } from 'drizzle-orm';
 import { approvals } from '../schema';
 import { getDb } from '../db';
 
 /**
- * Query stubs for approval operations
- * These will be implemented by Jules session J-101
+ * Query functions for approval operations
  */
 
 export async function createApproval(data: {
@@ -13,19 +13,42 @@ export async function createApproval(data: {
   itemId: string;
   requestComment?: string;
 }) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+  const db = getDb();
+  const [approval] = await db
+    .insert(approvals)
+    .values({
+      ...data,
+      status: 'pending',
+    })
+    .returning();
+  return approval;
 }
 
 export async function getApprovalById(approvalId: number) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+  const db = getDb();
+  const [approval] = await db
+    .select()
+    .from(approvals)
+    .where(eq(approvals.id, approvalId));
+  return approval;
 }
 
 export async function getApprovalsByDeal(dealId: number) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+  const db = getDb();
+  return db
+    .select()
+    .from(approvals)
+    .where(eq(approvals.dealId, dealId))
+    .orderBy(desc(approvals.createdAt));
 }
 
 export async function getPendingApprovalRecords() {
-  throw new Error('Not implemented - Jules J-101 will implement');
+  const db = getDb();
+  return db
+    .select()
+    .from(approvals)
+    .where(eq(approvals.status, 'pending'))
+    .orderBy(desc(approvals.createdAt));
 }
 
 export async function respondToApproval(data: {
@@ -33,5 +56,15 @@ export async function respondToApproval(data: {
   status: 'approved' | 'rejected';
   responseComment?: string;
 }) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+  const db = getDb();
+  const [updatedApproval] = await db
+    .update(approvals)
+    .set({
+      status: data.status,
+      responseComment: data.responseComment,
+      respondedAt: new Date(),
+    })
+    .where(eq(approvals.id, data.approvalId))
+    .returning();
+  return updatedApproval;
 }

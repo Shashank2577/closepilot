@@ -1,0 +1,77 @@
+
+> closepilot-monorepo@0.1.0 api:dev /app
+> pnpm --filter @closepilot/api dev
+
+
+> @closepilot/api@0.1.0 dev /app/packages/api
+> tsx watch src/index.ts
+
+Closepilot API server starting on port 3001
+2:14:46 AM [tsx] change in ./src/index.ts Rerunning...
+cClosepilot API server starting on port 3001
+2:15:10 AM [tsx] change in ./../../node_modules/.pnpm/@hono+node-server@1.19.14_hono@4.12.14/node_modules/@hono/node-server/dist/index.js Restarting...
+cClosepilot API server starting on port 3001
+2:24:10 AM [tsx] change in ./src/routes/approvals.ts Restarting...
+cClosepilot API server starting on port 3001
+Failed to create approval: Error: Not implemented - Jules J-101 will implement
+    at createApproval (/app/packages/db/src/queries/approvals.ts:16:9)
+    at <anonymous> (/app/packages/api/src/routes/approvals.ts:55:31)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async dispatch (/app/node_modules/.pnpm/hono@3.12.12/node_modules/hono/dist/cjs/compose.js:51:17)
+    at async cors2 (/app/node_modules/.pnpm/hono@3.12.12/node_modules/hono/dist/cjs/middleware/cors/index.js:87:5)
+    at async dispatch (/app/node_modules/.pnpm/hono@3.12.12/node_modules/hono/dist/cjs/compose.js:51:17)
+    at async /app/node_modules/.pnpm/hono@3.12.12/node_modules/hono/dist/cjs/hono-base.js:265:25
+    at async responseViaResponseObject (/app/node_modules/.pnpm/@hono+node-server@1.19.14_hono@3.12.12/node_modules/@hono/node-server/dist/index.js:526:13)
+    at async Server.<anonymous> (/app/node_modules/.pnpm/@hono+node-server@1.19.14_hono@3.12.12/node_modules/@hono/node-server/dist/index.js:669:14)
+2:27:15 AM [tsx] change in ./../db/src/queries/approvals.ts Restarting...
+cClosepilot API server starting on port 3001
+Failed to create approval: AggregateError [ECONNREFUSED]:
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:5432
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -111,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 5432
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:5432
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -111,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 5432
+    }
+  ]
+}
+Failed to get pending approvals: AggregateError [ECONNREFUSED]:
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:5432
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -111,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 5432
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:5432
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -111,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 5432
+    }
+  ]
+}

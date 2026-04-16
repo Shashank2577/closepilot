@@ -11,23 +11,24 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting not configured yet'",
-    "test": "jest"
+    "test": "vitest run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",
     "@closepilot/core": "workspace:*",
     "@closepilot/db": "workspace:*",
     "@modelcontextprotocol/sdk": "^0.5.0",
+    "@types/luxon": "^3.7.1",
     "googleapis": "^133.0.0",
+    "luxon": "^3.7.2",
     "mailparser": "^3.9.8",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
+    "@closepilot/mcp-client": "workspace:^",
     "@types/mailparser": "^3.4.6",
     "@types/node": "^20.11.0",
-    "jest": "^30.3.0",
-    "ts-jest": "^29.4.9",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.4"
   }
 }

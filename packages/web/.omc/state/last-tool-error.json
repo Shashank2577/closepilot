@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"pnpm --filter @closepilot/api build\",\"description\":\"Build API package\"}",
+  "error": "Exit code 1\n\n> @closepilot/api@0.1.0 build /Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/api\n> tsc\n\nsrc/routes/activities.ts(2,74): error TS2307: Cannot find module '@closepilot/db/queries/activities' or its corresponding type declarations.\n/Users/shashanksaxena/Documents/Personal/Code/closepilot/packages/api:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @closepilot/api@0.1.0 build: `tsc`\nExit status 2",
+  "timestamp": "2026-04-16T04:29:37.816Z",
+  "retry_count": 2
+}
