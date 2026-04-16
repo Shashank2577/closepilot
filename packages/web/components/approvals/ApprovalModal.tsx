@@ -1,137 +1,206 @@
-import React, { useState } from 'react';
+'use client';
 
-type ApprovalItem = {
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+
+interface Approval {
   id: number;
   dealId: number;
   approverEmail: string;
   itemType: string;
   itemId: string;
-  status: string;
-  requestComment: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  requestComment?: string;
+  responseComment?: string;
+  respondedAt?: string;
   createdAt: string;
-};
-
-interface ApprovalModalProps {
-  approval: ApprovalItem;
-  onClose: () => void;
-  onSuccess: () => void;
+  deal?: {
+    id: number;
+    leadName: string;
+    leadCompany?: string;
+    leadEmail: string;
+    stage: string;
+    proposal?: any;
+  };
 }
 
-export default function ApprovalModal({ approval, onClose, onSuccess }: ApprovalModalProps) {
+interface ApprovalModalProps {
+  approval: Approval;
+  onClose: () => void;
+  onUpdate: (approvalId: number, status: 'approved' | 'rejected') => void;
+}
+
+export function ApprovalModal({ approval, onClose, onUpdate }: ApprovalModalProps) {
   const [comment, setComment] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAction = async (action: 'approve' | 'reject') => {
+  const handleSubmit = async (action: 'approve' | 'reject') => {
     if (action === 'reject' && !comment.trim()) {
-      setError('A comment is required when rejecting.');
+      setError('Please provide a reason for rejection');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
-      const endpoint = `http://localhost:3001/api/approvals/${approval.id}/${action}`;
-      const payload = action === 'approve'
-        ? { approverComment: comment }
+      setSubmitting(true);
+      setError(null);
+
+      const endpoint = action === 'approve' ? '/approve' : '/reject';
+      const body = action === 'approve'
+        ? { approverComment: comment || null }
         : { reason: comment };
 
-      const res = await fetch(endpoint, {
+      const response = await fetch(`/api/approvals/${approval.id}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || `Failed to ${action}`);
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to submit response');
       }
 
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message);
+      onUpdate(approval.id, action);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
+  const optional = comment.trim().length > 0;
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose} />
-
-        <div className="relative inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-          <div className="sm:flex sm:items-start">
-            <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-              <h3 className="text-lg font-medium leading-6 text-gray-900" id="modal-title">
-                Review Approval Request
-              </h3>
-
-              <div className="mt-4 space-y-4">
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <p className="text-sm text-gray-700"><strong>Deal ID:</strong> {approval.dealId}</p>
-                  <p className="text-sm text-gray-700"><strong>Item Type:</strong> {approval.itemType}</p>
-                  <p className="text-sm text-gray-700"><strong>Item ID:</strong> {approval.itemId}</p>
-                  {approval.requestComment && (
-                    <div className="mt-2 text-sm text-gray-700">
-                      <strong>Request Comment:</strong>
-                      <p className="mt-1 text-gray-600 italic">{approval.requestComment}</p>
-                    </div>
-                  )}
-                </div>
-
-                {error && (
-                  <div className="p-3 text-sm text-red-700 bg-red-100 rounded-md">
-                    {error}
-                  </div>
-                )}
-
-                <div>
-                  <label htmlFor="comment" className="block text-sm font-medium text-gray-700">
-                    Comment {<span className="text-gray-400 font-normal">(Required for rejection)</span>}
-                  </label>
-                  <div className="mt-1">
-                    <textarea
-                      id="comment"
-                      name="comment"
-                      rows={4}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-2 border"
-                      placeholder="Add a comment..."
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Review Approval Request
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <span className="sr-only">Close</span>
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
-          <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-            <button
-              type="button"
-              disabled={loading}
-              className="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-              onClick={() => handleAction('approve')}
-            >
-              Approve
-            </button>
-            <button
-              type="button"
-              disabled={loading}
-              className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-              onClick={() => handleAction('reject')}
-            >
-              Reject
-            </button>
-            <button
-              type="button"
-              disabled={loading}
-              className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm disabled:opacity-50"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Deal Information</h4>
+              <dl className="mt-2 grid grid-cols-2 gap-4">
+                <div>
+                  <dt className="text-sm text-gray-500">Company</dt>
+                  <dd className="text-sm font-medium text-gray-900">
+                    {approval.deal?.leadCompany || 'N/A'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500">Contact</dt>
+                  <dd className="text-sm font-medium text-gray-900">
+                    {approval.deal?.leadName}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500">Email</dt>
+                  <dd className="text-sm font-medium text-gray-900">
+                    {approval.deal?.leadEmail}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500">Stage</dt>
+                  <dd className="text-sm font-medium text-gray-900 capitalize">
+                    {approval.deal?.stage}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-gray-700">Request Details</h4>
+              <dl className="mt-2 grid grid-cols-2 gap-4">
+                <div>
+                  <dt className="text-sm text-gray-500">Type</dt>
+                  <dd className="text-sm font-medium text-gray-900 capitalize">
+                    {approval.itemType}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500">Requested</dt>
+                  <dd className="text-sm font-medium text-gray-900">
+                    {new Date(approval.createdAt).toLocaleString()}
+                  </dd>
+                </div>
+              </dl>
+              {approval.requestComment && (
+                <div className="mt-2">
+                  <dt className="text-sm text-gray-500">Comment</dt>
+                  <dd className="text-sm text-gray-900 mt-1">
+                    {approval.requestComment}
+                  </dd>
+                </div>
+              )}
+            </div>
+
+            {approval.deal?.proposal && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700">Proposal Preview</h4>
+                <div className="mt-2 p-4 bg-gray-50 rounded-md">
+                  <p className="text-sm font-medium text-gray-900">
+                    {approval.deal.proposal.title}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Total: {approval.deal.proposal.pricing.currency}{' '}
+                    {approval.deal.proposal.pricing.total.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="comment" className="block text-sm font-medium text-gray-700">
+                Comment {!optional ? '(required for rejection)' : '(optional)'}
+              </label>
+              <textarea
+                id="comment"
+                rows={3}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                placeholder="Add your comments here..."
+              />
+            </div>
+
+            {error && (
+              <div className="rounded-md bg-red-50 p-4">
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button onClick={onClose} variant="outline" disabled={submitting}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleSubmit('reject')}
+                variant="destructive"
+                disabled={submitting}
+              >
+                Reject
+              </Button>
+              <Button
+                onClick={() => handleSubmit('approve')}
+                disabled={submitting}
+              >
+                Approve
+              </Button>
+            </div>
           </div>
         </div>
       </div>
