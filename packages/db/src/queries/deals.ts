@@ -14,6 +14,14 @@ export async function createDeal(input: NewDeal): Promise<Deal> {
   return deal as Deal;
 }
 
+export async function getDeals(filters?: any, pagination?: any, sorting?: any): Promise<Deal[]> {
+  throw new Error('Not implemented - Jules J-101 will implement');
+}
+
+export async function getDealStats(): Promise<Record<string, number>> {
+  throw new Error('Not implemented - Jules J-101 will implement');
+}
+
 export async function getDeal(dealId: string): Promise<Deal | null> {
   const db = getDb();
   const [deal] = await db
