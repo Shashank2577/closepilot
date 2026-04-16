@@ -7,7 +7,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { registerDealStoreTools } from './tools/deal-store.js';
+import { dealStoreToolDefinitions, handleDealStoreToolCall, registerDealStoreTools } from './tools/deal-store.js';
 import { registerGmailTools } from './tools/gmail.js';
 import { registerCalendarTools } from './tools/calendar.js';
 import { registerDriveTools } from './tools/drive.js';
@@ -54,48 +54,7 @@ async function main() {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
-        // Deal Store tools (stubs - see J-101)
-        {
-          name: 'create_deal',
-          description: 'Create a new deal in the system',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              input: {
-                type: 'object',
-                description: 'Deal input data',
-              },
-            },
-            required: ['input'],
-          },
-        },
-        {
-          name: 'get_deal',
-          description: 'Get a deal by ID',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              dealId: {
-                type: 'string',
-                description: 'Deal ID',
-              },
-            },
-            required: ['dealId'],
-          },
-        },
-        {
-          name: 'update_deal_stage',
-          description: 'Update deal stage',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              dealId: { type: 'string' },
-              stage: { type: 'string' },
-              reason: { type: 'string' },
-            },
-            required: ['dealId', 'stage'],
-          },
-        },
+        ...dealStoreToolDefinitions,
         // Calendar tools
         {
           name: 'create_calendar_event',
@@ -135,10 +94,7 @@ async function main() {
             type: 'object',
             properties: {
               eventId: { type: 'string', description: 'Event ID' },
-              updates: {
-                type: 'object',
-                description: 'Event updates',
-              },
+              updates: { type: 'object', description: 'Event updates' },
             },
             required: ['eventId', 'updates'],
           },
@@ -160,11 +116,7 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
-              attendees: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Attendee email addresses',
-              },
+              attendees: { type: 'array', items: { type: 'string' }, description: 'Attendee email addresses' },
               windowStart: { type: 'string', description: 'Window start (ISO 8601)' },
               windowEnd: { type: 'string', description: 'Window end (ISO 8601)' },
               duration: { type: 'number', description: 'Duration in minutes' },
@@ -181,11 +133,7 @@ async function main() {
               title: { type: 'string', description: 'Meeting title' },
               description: { type: 'string', description: 'Meeting description' },
               duration: { type: 'number', description: 'Duration in minutes' },
-              attendees: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Attendee email addresses',
-              },
+              attendees: { type: 'array', items: { type: 'string' }, description: 'Attendee email addresses' },
               proposedTimes: {
                 type: 'array',
                 description: 'Proposed time slots',
@@ -221,11 +169,7 @@ async function main() {
           inputSchema: {
             type: 'object',
             properties: {
-              attendees: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Attendee email addresses',
-              },
+              attendees: { type: 'array', items: { type: 'string' }, description: 'Attendee email addresses' },
               windowStart: { type: 'string', description: 'Window start (ISO 8601)' },
               windowEnd: { type: 'string', description: 'Window end (ISO 8601)' },
               duration: { type: 'number', description: 'Duration in minutes' },
@@ -243,6 +187,11 @@ async function main() {
     const { name, arguments: args } = request.params;
 
     try {
+      const dealStoreResult = await handleDealStoreToolCall(name, args);
+      if (dealStoreResult) {
+        return dealStoreResult;
+      }
+
       // Calendar tools
       if (name === 'create_calendar_event') {
         const { createEvent } = await import('./tools/calendar.js');
@@ -258,6 +207,7 @@ async function main() {
         });
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       }
+>>>>>>> main
 
       if (name === 'get_calendar_event') {
         const { getEvent } = await import('./tools/calendar.js');
@@ -347,42 +297,6 @@ async function main() {
           authConfig
         );
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
-      }
-
-      // Deal Store tools (stubs)
-      if (name === 'create_deal' || name === 'get_deal' || name === 'update_deal_stage') {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool ${name} not yet implemented - see J-101`,
-            },
-          ],
-        };
-      }
-
-      // Gmail tools (stubs)
-      if (name.startsWith('gmail_')) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool ${name} not yet implemented - see J-102`,
-            },
-          ],
-        };
-      }
-
-      // Drive tools (stubs)
-      if (name.startsWith('drive_')) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool ${name} not yet implemented - see J-104`,
-            },
-          ],
-        };
       }
 
       return {
