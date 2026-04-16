@@ -125,6 +125,12 @@
       "type": "file"
     },
     {
+      "path": "packages/mcp-server/src/tools/calendar.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776320592295,
+      "type": "file"
+    },
+    {
       "path": ".jules-sessions.md",
       "accessCount": 1,
       "lastAccessed": 1776276062562,
