@@ -1,136 +1,263 @@
-import { AgentInput, AgentOutput, AgentType, DealStage, CrmSyncContext } from '@closepilot/core';
-import { CrmAdapter } from './crm-adapter';
-import { HubSpotAdapter } from './hubspot-adapter';
-import { SalesforceAdapter } from './salesforce-adapter';
-import { PipedriveAdapter } from './pipedrive-adapter';
-import { mapDealToContact, mapDealToCrmDeal } from './field-mapper';
-import { extractActivities } from './activity-sync';
+import type { Deal, DealStage, AgentType, CrmSyncContext } from '@closepilot/core';
+import { DealStoreTools } from '@closepilot/mcp-client';
+import { HubSpotAdapter } from './hubspot-adapter.js';
+import { SalesforceAdapter } from './salesforce-adapter.js';
+import { PipedriveAdapter } from './pipedrive-adapter.js';
+import type { CRMAdapter, CRMConfig, CRMSyncResult } from './crm-adapter.js';
+import { FieldMapper } from './field-mapper.js';
+import { ActivitySync } from './activity-sync.js';
 
-// Mock sleep function for exponential backoff
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+/**
+ * CRM Sync Agent
+ * Syncs deals with CRM systems (HubSpot, Salesforce, Pipedrive)
+ */
+export class CRMSyncAgent {
+  private dealStoreTools: DealStoreTools;
+  private fieldMapper: FieldMapper;
 
-function getAdapter(context: CrmSyncContext): CrmAdapter {
-  switch (context.crmSystem) {
-    case 'hubspot':
-      return new HubSpotAdapter(process.env.HUBSPOT_ACCESS_TOKEN || 'mock-token');
-    case 'salesforce':
-      return new SalesforceAdapter(
-        process.env.SALESFORCE_LOGIN_URL || 'https://login.salesforce.com',
-        process.env.SALESFORCE_ACCESS_TOKEN || 'mock-token'
-      );
-    case 'pipedrive':
-      return new PipedriveAdapter(process.env.PIPEDRIVE_API_TOKEN || 'mock-token');
-    default:
-      throw new Error(`Unsupported CRM system: ${context.crmSystem}`);
-  }
-}
-
-export async function processDeal(input: AgentInput<CrmSyncContext>): Promise<AgentOutput> {
-  const startTime = new Date();
-  const { deal, context } = input;
-
-  const output: AgentOutput = {
-    dealId: deal.id,
-    success: false,
-    requiresApproval: false,
-    metadata: {
-      agentType: AgentType.CRM_SYNC,
-      executionId: input.metadata?.executionId || `exec-${Date.now()}`,
-      startedAt: startTime,
-    }
-  };
-
-  if (deal.approvalStatus !== 'approved') {
-    output.errors = ['Cannot sync deal to CRM: Proposal is not approved.'];
-    output.nextStage = DealStage.FAILED;
-    return output;
+  constructor(apiKey: string, dealStoreTools: DealStoreTools) {
+    this.dealStoreTools = dealStoreTools;
+    this.fieldMapper = new FieldMapper();
   }
 
-  if (!deal.proposal) {
-    output.errors = ['Cannot sync deal to CRM: No proposal found.'];
-    output.nextStage = DealStage.FAILED;
-    return output;
-  }
+  /**
+   * Process a deal through CRM sync
+   */
+  async processDeal(dealId: string, context: CrmSyncContext): Promise<CRMSyncResult> {
+    const startTime = new Date();
 
-  const adapter = getAdapter(context);
-
-  const MAX_RETRIES = 3;
-  let attempt = 0;
-
-  while (attempt < MAX_RETRIES) {
     try {
-      attempt++;
-      console.log(`[CRM Sync] Attempt ${attempt} to sync deal ${deal.id} to ${context.crmSystem}`);
-
-      // 1. Connect
-      await adapter.connect();
-
-      let contactId: string | undefined;
-
-      // 2. Create/Update Contact
-      if (context.createContact !== false) {
-        const mappedContact = mapDealToContact(deal);
-        const contact = await adapter.upsertContact(mappedContact);
-        contactId = contact.id;
-        console.log(`[CRM Sync] Contact upserted: ${contactId}`);
+      // Get deal from store
+      const deal = await this.dealStoreTools.getDeal(dealId);
+      if (!deal) {
+        throw new Error(`Deal ${dealId} not found`);
       }
 
-      let crmDealId: string | undefined;
-
-      // 3. Create/Update Deal
-      if (context.createDeal !== false) {
-        const mappedDeal = mapDealToCrmDeal(deal, contactId);
-        const crmDeal = await adapter.upsertDeal(mappedDeal);
-        crmDealId = crmDeal.id;
-        console.log(`[CRM Sync] Deal upserted: ${crmDealId}`);
-
-        deal.crmId = crmDealId;
-        deal.crmSyncedAt = new Date();
+      // Validate deal stage
+      if (deal.stage !== 'crm_sync') {
+        throw new Error(`Deal is in ${deal.stage} stage, expected crm_sync`);
       }
 
-      // 4. Sync Activities
-      if (crmDealId) {
-        const activities = extractActivities(deal, crmDealId);
-        for (const activity of activities) {
-          await adapter.addActivity(activity);
-        }
-        console.log(`[CRM Sync] Synced ${activities.length} activities`);
-
-        // 5. Attach Proposal Document (Mocking file content for now)
-        if (deal.proposalDocumentId) {
-           await adapter.attachDocument(
-             crmDealId,
-             `Proposal_${deal.leadCompany || deal.leadName}.pdf`,
-             Buffer.from('Mock PDF Content')
-           );
-           console.log(`[CRM Sync] Attached proposal document`);
-        }
+      // Check if proposal exists and is approved
+      if (!deal.proposal) {
+        throw new Error('Deal does not have a proposal');
       }
 
-      output.success = true;
-      output.nextStage = DealStage.COMPLETED;
-      break; // Success, exit retry loop
-
-    } catch (error: any) {
-      console.error(`[CRM Sync] Attempt ${attempt} failed:`, error.message);
-
-      if (attempt >= MAX_RETRIES) {
-        output.errors = [`Sync failed after ${MAX_RETRIES} attempts. Last error: ${error.message}`];
-        output.nextStage = DealStage.FAILED;
-        break;
+      if (deal.approvalStatus !== 'approved') {
+        throw new Error('Deal proposal has not been approved');
       }
 
-      // Exponential backoff: 2^attempt * 1000ms (e.g., 2s, 4s, 8s)
-      const backoffDelay = Math.pow(2, attempt) * 1000;
-      console.log(`[CRM Sync] Waiting ${backoffDelay}ms before retry...`);
-      await sleep(backoffDelay);
+      // Initialize CRM adapter
+      const crmAdapter = await this.initializeCRMAdapter(context);
+
+      // Sync to CRM
+      const result = await this.syncToCRM(deal, crmAdapter, context);
+
+      // Update deal with CRM IDs
+      await this.dealStoreTools.updateDeal(dealId, {
+        crmId: result.crmDealId,
+        crmSyncedAt: result.syncedAt,
+        stage: 'completed',
+      });
+
+      return result;
+    } catch (error) {
+      // Handle error and update deal stage to failed if necessary
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      await this.dealStoreTools.updateDeal(dealId, {
+        stage: 'failed',
+      });
+
+      return {
+        success: false,
+        dealId,
+        syncedAt: startTime,
+        stage: 'failed',
+        errors: [errorMessage],
+        warnings: [],
+      };
     }
   }
 
-  if (output.metadata) {
-    output.metadata.completedAt = new Date();
-    output.metadata.duration = output.metadata.completedAt.getTime() - output.metadata.startedAt.getTime();
+  /**
+   * Initialize CRM adapter based on context
+   */
+  private async initializeCRMAdapter(context: CrmSyncContext): Promise<CRMAdapter> {
+    const config: CRMConfig = {
+      type: context.crmSystem,
+      apiKey: process.env[`${context.crmSystem.toUpperCase()}_API_KEY`],
+      oauthToken: process.env[`${context.crmSystem.toUpperCase()}_OAUTH_TOKEN`],
+      environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
+      retryConfig: {
+        maxRetries: 3,
+        initialDelay: 1000,
+        maxDelay: 30000,
+        backoffMultiplier: 2,
+      },
+    };
+
+    let adapter: CRMAdapter;
+
+    switch (context.crmSystem) {
+      case 'hubspot':
+        adapter = new HubSpotAdapter();
+        break;
+      case 'salesforce':
+        adapter = new SalesforceAdapter();
+        break;
+      case 'pipedrive':
+        adapter = new PipedriveAdapter();
+        break;
+      default:
+        throw new Error(`Unsupported CRM system: ${context.crmSystem}`);
+    }
+
+    await adapter.initialize(config);
+
+    return adapter;
   }
 
-  return output;
+  /**
+   * Sync deal to CRM
+   */
+  private async syncToCRM(
+    deal: Deal,
+    crmAdapter: CRMAdapter,
+    context: CrmSyncContext
+  ): Promise<CRMSyncResult> {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    let crmContactId: string | undefined;
+    let crmDealId: string | undefined;
+
+    try {
+      // Step 1: Sync contact
+      if (context.createContact) {
+        const contactData = this.fieldMapper.mapToContact(deal);
+        const contactResult = await crmAdapter.syncContact(contactData);
+
+        if (!contactResult.success) {
+          errors.push(`Failed to sync contact: ${contactResult.error}`);
+          return this.createFailureResult(deal.id, errors, warnings);
+        }
+
+        crmContactId = contactResult.crmContactId;
+      }
+
+      // Step 2: Sync deal
+      if (context.createDeal) {
+        const crmStage = this.fieldMapper.getCRMStage(deal, context.crmSystem);
+        const dealData = this.fieldMapper.mapToDeal(deal, crmStage);
+
+        if (crmContactId) {
+          dealData.contactId = crmContactId;
+        }
+
+        const dealResult = await crmAdapter.syncDeal(dealData);
+
+        if (!dealResult.success) {
+          errors.push(`Failed to sync deal: ${dealResult.error}`);
+          return this.createFailureResult(deal.id, errors, warnings);
+        }
+
+        crmDealId = dealResult.crmDealId;
+      }
+
+      // Step 3: Sync activities
+      if (crmDealId) {
+        try {
+          const activitySync = new ActivitySync(crmAdapter, this.fieldMapper);
+          await activitySync.syncDealActivities(deal, crmDealId);
+        } catch (error) {
+          const activityError = error instanceof Error ? error.message : 'Unknown error';
+          warnings.push(`Failed to sync some activities: ${activityError}`);
+        }
+      }
+
+      // Step 4: Attach proposal document
+      if (crmDealId && deal.proposalDocumentId) {
+        try {
+          // This would use Drive tools to get the document
+          // For now, we'll add a warning
+          warnings.push('Proposal document attachment not yet implemented');
+        } catch (error) {
+          const docError = error instanceof Error ? error.message : 'Unknown error';
+          warnings.push(`Failed to attach proposal: ${docError}`);
+        }
+      }
+
+      return {
+        success: true,
+        dealId: deal.id,
+        crmDealId,
+        crmContactId,
+        stage: 'completed',
+        syncedAt: new Date(),
+        errors,
+        warnings,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      errors.push(errorMessage);
+      return this.createFailureResult(deal.id, errors, warnings);
+    }
+  }
+
+  /**
+   * Create failure result
+   */
+  private createFailureResult(
+    dealId: string,
+    errors: string[],
+    warnings: string[]
+  ): CRMSyncResult {
+    return {
+      success: false,
+      dealId,
+      syncedAt: new Date(),
+      stage: 'failed',
+      errors,
+      warnings,
+    };
+  }
+
+  /**
+   * Query deals pending CRM sync
+   */
+  async getPendingDeals(): Promise<Deal[]> {
+    return await this.dealStoreTools.queryDealsByStage('crm_sync');
+  }
+
+  /**
+   * Batch process multiple deals
+   */
+  async batchProcessDeals(
+    dealIds: string[],
+    context: CrmSyncContext
+  ): Promise<CRMSyncResult[]> {
+    const results: CRMSyncResult[] = [];
+
+    for (const dealId of dealIds) {
+      const result = await this.processDeal(dealId, context);
+      results.push(result);
+    }
+
+    return results;
+  }
 }
+
+/**
+ * Factory function to create a CRM Sync Agent
+ */
+export function createCRMSyncAgent(apiKey: string, dealStoreTools: DealStoreTools): CRMSyncAgent {
+  return new CRMSyncAgent(apiKey, dealStoreTools);
+}
+
+// Re-export types
+export * from './crm-adapter.js';
+export * from './hubspot-adapter.js';
+export * from './salesforce-adapter.js';
+export * from './pipedrive-adapter.js';
+export * from './field-mapper.js';
+export * from './activity-sync.js';

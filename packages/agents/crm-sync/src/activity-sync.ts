@@ -1,71 +1,172 @@
-import { Deal } from '@closepilot/core';
-import { CrmActivity } from './crm-adapter';
+import type { Deal } from '@closepilot/core';
+import type { CRMAdapter, CRMActivityData } from './crm-adapter.js';
+import { FieldMapper } from './field-mapper.js';
 
 /**
- * Extracts activities from a Deal to be synced to CRM
+ * Activity Sync
+ * Syncs activities from Closepilot to CRM
  */
-export function extractActivities(deal: Deal, crmDealId?: string): CrmActivity[] {
-  const activities: CrmActivity[] = [];
-  const now = new Date();
+export class ActivitySync {
+  private crmAdapter: CRMAdapter;
+  private fieldMapper: FieldMapper;
 
-  // 1. Initial Ingestion / Lead Capture Note
-  activities.push({
-    dealId: crmDealId,
-    type: 'note',
-    subject: 'Lead Captured via Closepilot',
-    body: `Lead captured via ${deal.source}.\n\nLead Info:\nEmail: ${deal.leadEmail}\nName: ${deal.leadName}\nCompany: ${deal.leadCompany || 'N/A'}\nTitle: ${deal.leadTitle || 'N/A'}\n\nCaptured at: ${deal.createdAt.toISOString()}`,
-    timestamp: deal.createdAt,
-  });
+  constructor(crmAdapter: CRMAdapter, fieldMapper: FieldMapper) {
+    this.crmAdapter = crmAdapter;
+    this.fieldMapper = fieldMapper;
+  }
 
-  // 2. Enrichment Research Note
-  if (deal.companyResearch || deal.prospectResearch) {
-    let body = 'Research Data:\n\n';
+  /**
+   * Sync all deal activities to CRM
+   */
+  async syncDealActivities(deal: Deal, crmDealId: string): Promise<void> {
+    const activities = this.extractActivities(deal);
+
+    for (const activity of activities) {
+      activity.dealId = crmDealId;
+
+      try {
+        await this.crmAdapter.syncActivity(activity);
+      } catch (error) {
+        console.error(`Failed to sync activity ${activity.subject}:`, error);
+        // Continue with other activities even if one fails
+      }
+    }
+  }
+
+  /**
+   * Extract activities from deal
+   */
+  private extractActivities(deal: Deal): CRMActivityData[] {
+    const activities: CRMActivityData[] = [];
+
+    // Add initial email activity
+    if (deal.initialEmailId) {
+      activities.push(
+        this.fieldMapper.mapToActivity(
+          deal,
+          'email',
+          'Initial Inquiry',
+          'Initial email thread from lead'
+        )
+      );
+    }
+
+    // Add enrichment activity
+    if (deal.companyResearch || deal.prospectResearch) {
+      activities.push(
+        this.fieldMapper.mapToActivity(
+          deal,
+          'note',
+          'Research Completed',
+          this.formatResearchActivity(deal)
+        )
+      );
+    }
+
+    // Add scoping activity
+    if (deal.projectScope) {
+      activities.push(
+        this.fieldMapper.mapToActivity(
+          deal,
+          'note',
+          'Project Scope Defined',
+          this.formatScopeActivity(deal)
+        )
+      );
+    }
+
+    // Add proposal activity
+    if (deal.proposal) {
+      activities.push(
+        this.fieldMapper.mapToActivity(
+          deal,
+          'note',
+          'Proposal Generated',
+          this.formatProposalActivity(deal)
+        )
+      );
+    }
+
+    return activities;
+  }
+
+  /**
+   * Format research activity
+   */
+  private formatResearchActivity(deal: Deal): string {
+    const parts: string[] = [];
 
     if (deal.companyResearch) {
-      body += `[Company Research]\n`;
-      body += `Industry: ${deal.companyResearch.industry || 'N/A'}\n`;
-      body += `Size: ${deal.companyResearch.size || 'N/A'}\n`;
-      body += `Description: ${deal.companyResearch.description || 'N/A'}\n\n`;
+      parts.push('**Company Research**');
+      parts.push(`Industry: ${deal.companyResearch.industry || 'N/A'}`);
+      parts.push(`Size: ${deal.companyResearch.size || 'N/A'}`);
+
+      if (deal.companyResearch.technologies?.length) {
+        parts.push(`Tech Stack: ${deal.companyResearch.technologies.join(', ')}`);
+      }
     }
 
     if (deal.prospectResearch) {
-      body += `[Prospect Research]\n`;
-      body += `Decision Maker: ${deal.prospectResearch.decisionMaker ? 'Yes' : 'No'}\n`;
-      body += `Influence Level: ${deal.prospectResearch.influenceLevel}\n`;
-      body += `Background: ${deal.prospectResearch.background || 'N/A'}\n`;
+      parts.push('\n**Prospect Research**');
+      parts.push(`Title: ${deal.prospectResearch.title}`);
+      parts.push(`Decision Maker: ${deal.prospectResearch.decisionMaker ? 'Yes' : 'No'}`);
+      parts.push(`Influence Level: ${deal.prospectResearch.influenceLevel}`);
     }
 
-    activities.push({
-      dealId: crmDealId,
-      type: 'note',
-      subject: 'Enrichment Data Compiled',
-      body,
-      // We don't have an exact enrichment timestamp, use a rough approximation or current time
-      timestamp: new Date(deal.createdAt.getTime() + 1000 * 60 * 5),
-    });
+    return parts.join('\n');
   }
 
-  // 3. Scoping Note
-  if (deal.projectScope) {
-    activities.push({
-      dealId: crmDealId,
-      type: 'note',
-      subject: 'Project Scope Defined',
-      body: `Scope Title: ${deal.projectScope.title}\nComplexity: ${deal.projectScope.complexity}\n\nServices: ${deal.projectScope.services.join(', ')}\n\nDeliverables: ${deal.projectScope.deliverables.join(', ')}`,
-      timestamp: new Date(deal.createdAt.getTime() + 1000 * 60 * 15),
-    });
+  /**
+   * Format scope activity
+   */
+  private formatScopeActivity(deal: Deal): string {
+    if (!deal.projectScope) return '';
+
+    const parts: string[] = [];
+
+    parts.push(`**Title**: ${deal.projectScope.title}`);
+    parts.push(`**Description**: ${deal.projectScope.description}`);
+    parts.push(`**Complexity**: ${deal.projectScope.complexity}`);
+
+    if (deal.projectScope.services?.length) {
+      parts.push(`**Services**: ${deal.projectScope.services.join(', ')}`);
+    }
+
+    if (deal.projectScope.deliverables?.length) {
+      parts.push(`**Deliverables**: ${deal.projectScope.deliverables.join(', ')}`);
+    }
+
+    return parts.join('\n');
   }
 
-  // 4. Proposal Generated Note
-  if (deal.proposal) {
-    activities.push({
-      dealId: crmDealId,
-      type: 'note',
-      subject: 'Proposal Generated',
-      body: `Proposal: ${deal.proposal.title}\nTotal Value: ${deal.proposal.pricing.currency} ${deal.proposal.pricing.total}\n\nExecutive Summary: ${deal.proposal.executiveSummary}`,
-      timestamp: new Date(deal.createdAt.getTime() + 1000 * 60 * 30),
-    });
-  }
+  /**
+   * Format proposal activity
+   */
+  private formatProposalActivity(deal: Deal): string {
+    if (!deal.proposal) return '';
 
-  return activities;
+    const parts: string[] = [];
+
+    parts.push(`**Title**: ${deal.proposal.title}`);
+    parts.push(`**Total**: ${deal.proposal.pricing.currency} ${deal.proposal.pricing.total}`);
+
+    if (deal.proposal.pricing.breakdown?.length) {
+      parts.push('\n**Pricing Breakdown**:');
+      for (const item of deal.proposal.pricing.breakdown) {
+        parts.push(`- ${item.service}: ${deal.proposal.pricing.currency} ${item.amount}`);
+        if (item.description) {
+          parts.push(`  ${item.description}`);
+        }
+      }
+    }
+
+    if (deal.proposal.nextSteps?.length) {
+      parts.push('\n**Next Steps**:');
+      deal.proposal.nextSteps.forEach((step: string, i: number) => {
+        parts.push(`${i + 1}. ${step}`);
+      });
+    }
+
+    return parts.join('\n');
+  }
 }

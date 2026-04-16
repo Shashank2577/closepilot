@@ -1,161 +1,428 @@
-import { Client } from '@hubspot/api-client';
-import { CrmAdapter, CrmContact, CrmDeal, CrmActivity } from './crm-adapter';
+import { HubSpotClient } from '@hubspot/api-client';
+import type {
+  CRMAdapter,
+  CRMConfig,
+  ContactData,
+  CRMDealData,
+  CRMActivityData,
+  DocumentData,
+  CRMContactResult,
+  CRMDealResult,
+  CRMActivityResult,
+  CRMErrorHandling,
+} from './crm-adapter.js';
 
-export class HubSpotAdapter implements CrmAdapter {
-  private client: Client;
+/**
+ * HubSpot CRM Adapter
+ * Implements CRM sync for HubSpot
+ */
+export class HubSpotAdapter implements CRMAdapter {
+  private client?: HubSpotClient;
+  private config?: CRMConfig;
+  private retryCount = 0;
 
-  constructor(accessToken: string) {
-    this.client = new Client({ accessToken });
-  }
+  /**
+   * Initialize HubSpot connection
+   */
+  async initialize(config: CRMConfig): Promise<void> {
+    this.config = config;
 
-  async connect(): Promise<void> {
-    try {
-      await this.client.crm.contacts.basicApi.getPage(1);
-    } catch (error) {
-      throw new Error(`HubSpot connection failed: ${error}`);
+    if (!config.apiKey && !config.oauthToken) {
+      throw new Error('HubSpot requires either apiKey or oauthToken');
+    }
+
+    this.client = new HubSpotClient({
+      apiKey: config.apiKey,
+      accessToken: config.oauthToken,
+    });
+
+    // Test connection
+    const isConnected = await this.testConnection();
+    if (!isConnected) {
+      throw new Error('Failed to connect to HubSpot');
     }
   }
 
-  async upsertContact(contact: CrmContact): Promise<CrmContact> {
-    const searchResponse = await this.client.crm.contacts.searchApi.doSearch({
-      filterGroups: [{
-        filters: [{
-          propertyName: 'email',
-          operator: 'EQ' as any,
-          value: contact.email,
-        }]
-      }],
-      properties: ['email', 'firstname', 'lastname', 'company', 'jobtitle'],
-      sorts: [],
-      after: '0',
-      limit: 1,
-    });
+  /**
+   * Test connection to HubSpot
+   */
+  async testConnection(): Promise<boolean> {
+    if (!this.client) return false;
+
+    try {
+      // Simple API call to test connection
+      await this.client.crm.contacts.basicApi.getPage(1);
+      return true;
+    } catch (error) {
+      console.error('HubSpot connection test failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Sync contact to HubSpot
+   */
+  async syncContact(contact: ContactData): Promise<CRMContactResult> {
+    if (!this.client) {
+      return {
+        success: false,
+        created: false,
+        updated: false,
+        error: 'HubSpot client not initialized',
+      };
+    }
+
+    try {
+      // First, try to find existing contact by email
+      const existingContact = await this.findContactByEmail(contact.email);
+
+      if (existingContact) {
+        // Update existing contact
+        const updated = await this.updateContact(existingContact.id, contact);
+        return {
+          success: true,
+          crmContactId: existingContact.id,
+          created: false,
+          updated: true,
+        };
+      } else {
+        // Create new contact
+        const created = await this.createContact(contact);
+        return {
+          success: true,
+          crmContactId: created.id,
+          created: true,
+          updated: false,
+        };
+      }
+    } catch (error) {
+      const handling = await this.handleError(
+        error as Error,
+        'syncContact'
+      );
+      return {
+        success: false,
+        created: false,
+        updated: false,
+        error: handling.message,
+      };
+    }
+  }
+
+  /**
+   * Sync deal to HubSpot
+   */
+  async syncDeal(deal: CRMDealData): Promise<CRMDealResult> {
+    if (!this.client) {
+      return {
+        success: false,
+        created: false,
+        updated: false,
+        error: 'HubSpot client not initialized',
+      };
+    }
+
+    try {
+      // Map Closepilot deal to HubSpot deal format
+      const hubSpotDeal = this.mapDealToHubSpot(deal);
+
+      // Create deal
+      const response = await this.client.crm.deals.basicApi.create({
+        properties: hubSpotDeal,
+      });
+
+      const dealId = response.id;
+
+      // Associate deal with contact if contactId provided
+      if (deal.contactId && dealId) {
+        await this.associateDealWithContact(dealId, deal.contactId);
+      }
+
+      return {
+        success: true,
+        crmDealId: dealId,
+        created: true,
+        updated: false,
+      };
+    } catch (error) {
+      const handling = await this.handleError(
+        error as Error,
+        'syncDeal'
+      );
+      return {
+        success: false,
+        created: false,
+        updated: false,
+        error: handling.message,
+      };
+    }
+  }
+
+  /**
+   * Sync activity to HubSpot
+   */
+  async syncActivity(activity: CRMActivityData): Promise<CRMActivityResult> {
+    if (!this.client) {
+      return {
+        success: false,
+        error: 'HubSpot client not initialized',
+      };
+    }
+
+    try {
+      // Map to HubSpot engagement
+      const engagement = this.mapActivityToHubSpot(activity);
+
+      const response = await this.client.crm.objects.communications.basicApi.create({
+        properties: engagement,
+      });
+
+      // Associate engagement with deal
+      if (activity.dealId && response.id) {
+        await this.client.crm.objects.communications.associationsApi.create(
+          response.id,
+          activity.dealId,
+          'deal_to_communication'
+        );
+      }
+
+      return {
+        success: true,
+        crmActivityId: response.id,
+      };
+    } catch (error) {
+      const handling = await this.handleError(
+        error as Error,
+        'syncActivity'
+      );
+      return {
+        success: false,
+        error: handling.message,
+      };
+    }
+  }
+
+  /**
+   * Attach document to deal
+   */
+  async attachDocument(dealId: string, documentData: DocumentData): Promise<boolean> {
+    if (!this.client) {
+      return false;
+    }
+
+    try {
+      // Create file in HubSpot
+      const fileResponse = await this.client.crm.files.filesApi.upload({
+        file: documentData.content,
+        fileName: documentData.name,
+        options: {
+          access: 'PRIVATE',
+        },
+      });
+
+      // Associate file with deal
+      if (fileResponse.id) {
+        await this.client.crm.files.associationsApi.create(
+          fileResponse.id,
+          dealId,
+          'deal_to_file'
+        );
+      }
+
+      return true;
+    } catch (error) {
+      await this.handleError(error as Error, 'attachDocument');
+      return false;
+    }
+  }
+
+  /**
+   * Handle errors with retry logic
+   */
+  async handleError(error: Error, context: string): Promise<CRMErrorHandling> {
+    const errorMessage = error.message || 'Unknown error';
+
+    // Check for rate limiting
+    if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+      if (this.retryCount < (this.config?.retryConfig.maxRetries || 3)) {
+        this.retryCount++;
+        const delay = Math.min(
+          (this.config?.retryConfig.initialDelay || 1000) *
+            Math.pow(this.config?.retryConfig.backoffMultiplier || 2, this.retryCount),
+          this.config?.retryConfig.maxDelay || 30000
+        );
+
+        return {
+          shouldRetry: true,
+          retryAfter: delay,
+          fatal: false,
+          message: `Rate limited. Retrying after ${delay}ms`,
+        };
+      }
+    }
+
+    // Reset retry count
+    this.retryCount = 0;
+
+    // Check for fatal errors
+    if (errorMessage.includes('401') || errorMessage.includes('authentication')) {
+      return {
+        shouldRetry: false,
+        fatal: true,
+        message: 'Authentication failed. Check API credentials.',
+      };
+    }
+
+    if (errorMessage.includes('404')) {
+      return {
+        shouldRetry: false,
+        fatal: false,
+        message: 'Resource not found in HubSpot',
+      };
+    }
+
+    // Default error handling
+    return {
+      shouldRetry: false,
+      fatal: false,
+      message: `Error in ${context}: ${errorMessage}`,
+    };
+  }
+
+  /**
+   * Find contact by email
+   */
+  private async findContactByEmail(email: string): Promise<{ id: string } | null> {
+    if (!this.client) return null;
+
+    try {
+      const response = await this.client.crm.contacts.searchApi.doSearch({
+        filterGroups: [
+          {
+            filters: [
+              {
+                propertyName: 'email',
+                operator: 'EQ',
+                value: email,
+              },
+            ],
+          },
+        ],
+      });
+
+      if (response.results && response.results.length > 0) {
+        return { id: response.results[0].id };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error finding contact:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create new contact
+   */
+  private async createContact(contact: ContactData): Promise<{ id: string }> {
+    if (!this.client) {
+      throw new Error('Client not initialized');
+    }
 
     const properties = {
       email: contact.email,
-      firstname: contact.firstName || '',
-      lastname: contact.lastName || '',
-      company: contact.companyName || '',
-      jobtitle: contact.jobTitle || '',
+      firstname: contact.firstName,
+      lastname: contact.lastName,
+      company: contact.company || '',
+      jobtitle: contact.title || '',
       phone: contact.phone || '',
+      lead_source: contact.leadSource || 'Closepilot',
     };
 
-    let hubspotContactId: string;
+    const response = await this.client.crm.contacts.basicApi.create({
+      properties,
+    });
 
-    if (searchResponse.total > 0) {
-      hubspotContactId = searchResponse.results[0].id;
-      await this.client.crm.contacts.basicApi.update(hubspotContactId, { properties });
-    } else {
-      const createResponse = await this.client.crm.contacts.basicApi.create({ properties });
-      hubspotContactId = createResponse.id;
-    }
-
-    return { ...contact, id: hubspotContactId };
+    return { id: response.id };
   }
 
-  async upsertDeal(deal: CrmDeal): Promise<CrmDeal> {
-    const properties: Record<string, string> = {
-      dealname: deal.name,
-      amount: deal.amount?.toString() || '0',
-      description: deal.description || '',
-    };
-
-    if (deal.stage) properties.dealstage = deal.stage;
-    if (deal.closeDate) properties.closedate = deal.closeDate.toISOString();
-
-    let hubspotDealId: string;
-
-    if (deal.id) {
-      await this.client.crm.deals.basicApi.update(deal.id, { properties });
-      hubspotDealId = deal.id;
-    } else {
-      const createResponse = await this.client.crm.deals.basicApi.create({ properties });
-      hubspotDealId = createResponse.id;
-    }
-
-    if (deal.contactId) {
-      await (this.client.crm.deals as any).associationsApi.create(
-        parseInt(hubspotDealId),
-        'contacts',
-        parseInt(deal.contactId),
-        [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 3 }]
-      );
-    }
-
-    return { ...deal, id: hubspotDealId };
-  }
-
-  async addActivity(activity: CrmActivity): Promise<CrmActivity> {
-    if (!activity.dealId) {
-      throw new Error('Deal ID required to add activity');
+  /**
+   * Update existing contact
+   */
+  private async updateContact(contactId: string, contact: ContactData): Promise<void> {
+    if (!this.client) {
+      throw new Error('Client not initialized');
     }
 
     const properties = {
-      hs_note_body: `<b>${activity.subject}</b><br/><br/>${activity.body.replace(/\n/g, '<br/>')}`,
-      hs_timestamp: activity.timestamp.getTime().toString(),
+      email: contact.email,
+      firstname: contact.firstName,
+      lastname: contact.lastName,
+      company: contact.company || '',
+      jobtitle: contact.title || '',
+      phone: contact.phone || '',
     };
 
-    const createResponse = await this.client.crm.objects.notes.basicApi.create({ properties });
-    const noteId = createResponse.id;
-
-    await (this.client.crm.objects.notes as any).associationsApi.create(
-      parseInt(noteId),
-      'deals',
-      parseInt(activity.dealId),
-      [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 214 }]
-    );
-
-    return { ...activity, id: noteId };
+    await this.client.crm.contacts.basicApi.update(contactId, {
+      properties,
+    });
   }
 
-  async attachDocument(dealId: string, fileName: string, fileContent: Buffer): Promise<void> {
-    const fs = require('fs');
-    const path = require('path');
-    const tmpPath = path.join('/tmp', fileName);
-    fs.writeFileSync(tmpPath, fileContent);
-    const file = fs.createReadStream(tmpPath);
+  /**
+   * Associate deal with contact
+   */
+  private async associateDealWithContact(dealId: string, contactId: string): Promise<void> {
+    if (!this.client) {
+      throw new Error('Client not initialized');
+    }
 
-    // We mock the file upload payload, since @hubspot/api-client requires formData
-    const fileData = {
-      file: file,
-      options: JSON.stringify({
-        access: 'PUBLIC_INDEXABLE',
-        ttl: 'P3M',
-        overwrite: false,
-        duplicateValidationStrategy: 'NONE',
-        duplicateValidationScope: 'ENTIRE_PORTAL'
-      }),
-      folderPath: '/proposals'
+    await this.client.crm.deals.associationsApi.create(
+      dealId,
+      contactId,
+      'deal_to_contact'
+    );
+  }
+
+  /**
+   * Map Closepilot deal to HubSpot deal format
+   */
+  private mapDealToHubSpot(deal: CRMDealData): Record<string, string> {
+    return {
+      dealname: deal.title,
+      amount: deal.amount?.toString() || '0',
+      currency: deal.currency || 'USD',
+      dealstage: deal.stage,
+      closedate: deal.closeDate ? new Date(deal.closeDate).getTime().toString() : '',
+      description: deal.description || '',
+      source: deal.source || 'Closepilot',
+      closepilot_deal_id: deal.closepilotDealId,
+    };
+  }
+
+  /**
+   * Map Closepilot activity to HubSpot engagement
+   */
+  private mapActivityToHubSpot(activity: CRMActivityData): Record<string, string> {
+    return {
+      hs_communication_channel_type: this.mapActivityType(activity.type),
+      hs_communication_body: activity.body || '',
+      hs_timestamp: new Date(activity.timestamp).getTime().toString(),
+      hs_communication_subject: activity.subject,
+    };
+  }
+
+  /**
+   * Map activity type to HubSpot channel type
+   */
+  private mapActivityType(type: string): string {
+    const typeMap: Record<string, string> = {
+      email: 'EMAIL',
+      call: 'CALL',
+      meeting: 'MEETING',
+      note: 'NOTE',
+      task: 'TASK',
     };
 
-    try {
-      const response = await this.client.files.filesApi.upload(
-        fileData.file as any,
-        fileData.options,
-        fileData.folderPath
-      );
-
-      if (response && response.objects && response.objects.length > 0) {
-        const fileId = response.objects[0].id;
-
-        // Note to deal association using engagement notes
-        const noteProperties = {
-          hs_note_body: `Proposal Document Attached: ${fileName}`,
-          hs_attachment_ids: fileId
-        };
-        const createResponse = await this.client.crm.objects.notes.basicApi.create({ properties: noteProperties });
-
-        await (this.client.crm.objects.notes as any).associationsApi.create(
-          parseInt(createResponse.id),
-          'deals',
-          parseInt(dealId),
-          [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 214 }]
-        );
-      }
-    } catch (e) {
-      console.error('Failed to attach document to HubSpot:', e);
-    } finally {
-      fs.unlinkSync(tmpPath);
-    }
+    return typeMap[type] || 'EMAIL';
   }
 }

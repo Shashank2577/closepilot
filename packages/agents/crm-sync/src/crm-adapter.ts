@@ -1,58 +1,181 @@
-export interface CrmContact {
-  id?: string;
+import type { Deal, Proposal } from '@closepilot/core';
+
+/**
+ * Generic CRM adapter interface
+ * All CRM implementations must follow this contract
+ */
+export interface CRMAdapter {
+  /**
+   * Initialize the CRM connection
+   */
+  initialize(config: CRMConfig): Promise<void>;
+
+  /**
+   * Test connection to CRM
+   */
+  testConnection(): Promise<boolean>;
+
+  /**
+   * Create or update contact in CRM
+   */
+  syncContact(contact: ContactData): Promise<CRMContactResult>;
+
+  /**
+   * Create or update deal/opportunity in CRM
+   */
+  syncDeal(deal: CRMDealData): Promise<CRMDealResult>;
+
+  /**
+   * Sync activity/timeline to CRM
+   */
+  syncActivity(activity: CRMActivityData): Promise<CRMActivityResult>;
+
+  /**
+   * Attach document to deal
+   */
+  attachDocument(dealId: string, documentData: DocumentData): Promise<boolean>;
+
+  /**
+   * Handle sync errors with retry logic
+   */
+  handleError(error: Error, context: string): Promise<CRMErrorHandling>;
+}
+
+/**
+ * CRM configuration
+ */
+export interface CRMConfig {
+  type: 'hubspot' | 'salesforce' | 'pipedrive';
+  apiKey?: string;
+  oauthToken?: string;
+  environment: 'production' | 'sandbox';
+  retryConfig: RetryConfig;
+}
+
+/**
+ * Retry configuration
+ */
+export interface RetryConfig {
+  maxRetries: number;
+  initialDelay: number;
+  maxDelay: number;
+  backoffMultiplier: number;
+}
+
+/**
+ * Contact data from Closepilot deal
+ */
+export interface ContactData {
   email: string;
-  firstName?: string;
-  lastName?: string;
-  companyName?: string;
-  jobTitle?: string;
+  firstName: string;
+  lastName: string;
+  company?: string;
+  title?: string;
   phone?: string;
-  [key: string]: any;
+  leadSource?: string;
 }
 
-export interface CrmDeal {
-  id?: string;
-  name: string;
-  amount?: number;
-  stage?: string;
-  closeDate?: Date;
+/**
+ * Deal data for CRM sync
+ */
+export interface CRMDealData {
+  closepilotDealId: string;
   contactId?: string;
+  title: string;
+  amount?: number;
+  currency?: string;
+  stage: string;
+  closeDate?: Date;
+  probability?: number;
   description?: string;
-  [key: string]: any;
+  source?: string;
+  proposal?: Proposal;
+  customFields?: Record<string, unknown>;
 }
 
-export interface CrmActivity {
-  id?: string;
-  dealId?: string;
-  type: 'note' | 'email' | 'meeting' | 'task';
+/**
+ * Activity data for CRM sync
+ */
+export interface CRMActivityData {
+  dealId: string;
+  type: 'email' | 'call' | 'meeting' | 'note' | 'task';
   subject: string;
-  body: string;
+  body?: string;
   timestamp: Date;
-  [key: string]: any;
+  userId?: string;
 }
 
-export interface CrmAdapter {
-  /**
-   * Initialize or authenticate the CRM connection
-   */
-  connect(): Promise<void>;
+/**
+ * Document data for attachment
+ */
+export interface DocumentData {
+  name: string;
+  url?: string;
+  content?: string;
+  mimeType?: string;
+}
 
-  /**
-   * Create or update a contact based on email
-   */
-  upsertContact(contact: CrmContact): Promise<CrmContact>;
+/**
+ * Result from contact sync
+ */
+export interface CRMContactResult {
+  success: boolean;
+  crmContactId?: string;
+  created: boolean;
+  updated: boolean;
+  error?: string;
+}
 
-  /**
-   * Create or update a deal
-   */
-  upsertDeal(deal: CrmDeal): Promise<CrmDeal>;
+/**
+ * Result from deal sync
+ */
+export interface CRMDealResult {
+  success: boolean;
+  crmDealId?: string;
+  created: boolean;
+  updated: boolean;
+  error?: string;
+}
 
-  /**
-   * Add an activity (note, email, etc) to a deal's timeline
-   */
-  addActivity(activity: CrmActivity): Promise<CrmActivity>;
+/**
+ * Result from activity sync
+ */
+export interface CRMActivityResult {
+  success: boolean;
+  crmActivityId?: string;
+  error?: string;
+}
 
-  /**
-   * Attach a document/file to a deal
-   */
-  attachDocument(dealId: string, fileName: string, fileContent: Buffer): Promise<void>;
+/**
+ * Error handling result
+ */
+export interface CRMErrorHandling {
+  shouldRetry: boolean;
+  retryAfter?: number;
+  fatal: boolean;
+  message: string;
+}
+
+/**
+ * Field mapping configuration
+ */
+export interface FieldMapping {
+  sourceField: string;
+  targetField: string;
+  transform?: (value: unknown) => unknown;
+  required?: boolean;
+}
+
+/**
+ * CRM sync result
+ */
+export interface CRMSyncResult {
+  success: boolean;
+  dealId: string;
+  crmDealId?: string;
+  crmContactId?: string;
+  stage: string;
+  syncedAt: Date;
+  errors: string[];
+  warnings: string[];
 }
