@@ -1,0 +1,19 @@
+
+> closepilot-monorepo@0.1.0 web:dev /app
+> pnpm --filter @closepilot/web dev
+
+
+> @closepilot/web@0.1.0 dev /app/packages/web
+> next dev
+
+  ▲ Next.js 15.0.0
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.2s
+ ○ Compiling /approvals ...
+ ✓ Compiled /approvals in 3.9s (530 modules)
+ GET /approvals 200 in 4291ms
+ GET /approvals 200 in 82ms
+ ✓ Compiled in 466ms (530 modules)
+ GET /approvals 200 in 117ms

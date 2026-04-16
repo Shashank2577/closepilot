@@ -11,7 +11,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting not configured yet'",
-    "test": "echo 'Tests not configured yet'"
+    "test": "vitest run"
   },
   "dependencies": {
     "@closepilot/core": "workspace:*",
@@ -23,6 +23,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@closepilot/mcp-client": "workspace:^",
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3",
     "vitest": "^4.1.4"

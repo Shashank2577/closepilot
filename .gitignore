@@ -43,3 +43,14 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# Jules session tracking files (may contain secrets)
+.jules-sessions.md
+.jules-tracker.md
+.jules-final-status.md
+.jules-plan.json
+.omc/jules-session-status.md
+scripts/monitor-jules.sh
+
+# OMC runtime state
+.omc/state/

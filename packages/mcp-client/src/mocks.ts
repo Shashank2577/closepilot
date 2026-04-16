@@ -62,6 +62,18 @@ export class MockDealStoreClient {
       return { content: deal || null };
     }
 
+    if (name === 'update_deal') {
+      const dealId = args.dealId as string;
+      const updates = args.updates as Partial<Deal>;
+      const deal = this.deals.get(dealId);
+      if (deal) {
+        const updatedDeal = { ...deal, ...updates, updatedAt: new Date() };
+        this.deals.set(dealId, updatedDeal);
+        return { content: updatedDeal };
+      }
+      return { content: null };
+    }
+
     // Simulate updating deal stage
     if (name === 'update_deal_stage') {
       const dealId = args.dealId as string;
@@ -74,6 +86,60 @@ export class MockDealStoreClient {
         return { content: deal };
       }
       return { content: null };
+    }
+
+    if (name === 'query_deals_by_stage') {
+      const stage = args.stage as DealStage;
+      const dealsList = Array.from(this.deals.values()).filter(d => d.stage === stage);
+      return { content: dealsList };
+    }
+
+    if (name === 'query_deals_by_date_range') {
+      const start = new Date(args.startDate as string);
+      const end = new Date(args.endDate as string);
+      const dealsList = Array.from(this.deals.values()).filter(
+        d => d.createdAt >= start && d.createdAt <= end
+      );
+      return { content: dealsList };
+    }
+
+    if (name === 'get_pending_approvals') {
+      const dealsList = Array.from(this.deals.values()).filter(d => d.approvalStatus === 'pending');
+      return { content: dealsList };
+    }
+
+    if (name === 'approve_deal') {
+      const dealId = args.dealId as string;
+      const deal = this.deals.get(dealId);
+      if (deal) {
+        deal.approvalStatus = 'approved';
+        deal.updatedAt = new Date();
+        this.deals.set(dealId, deal);
+        return { content: deal };
+      }
+      return { content: null };
+    }
+
+    if (name === 'reject_deal') {
+      const dealId = args.dealId as string;
+      const deal = this.deals.get(dealId);
+      if (deal) {
+        deal.approvalStatus = 'rejected';
+        deal.updatedAt = new Date();
+        this.deals.set(dealId, deal);
+        return { content: deal };
+      }
+      return { content: null };
+    }
+
+    if (name === 'search_similar_deals') {
+      const query = (args.query as string).toLowerCase();
+      const limit = args.limit as number || 5;
+      const dealsList = Array.from(this.deals.values()).filter(d =>
+        (d.leadCompany && d.leadCompany.toLowerCase().includes(query)) ||
+        (d.leadName && d.leadName.toLowerCase().includes(query))
+      ).slice(0, limit);
+      return { content: dealsList };
     }
 
     // Default mock response
