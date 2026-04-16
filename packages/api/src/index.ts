@@ -28,9 +28,16 @@ app.route('/api/deals', dealsRoutes);
 app.route('/api/activities', activitiesRoutes);
 app.route('/api/approvals', approvalsRoutes);
 
+import { serve } from '@hono/node-server';
+
 // Start server
 const port = parseInt(process.env.API_PORT || '3001');
 
 console.log(`Closepilot API server starting on port ${port}`);
+
+serve({
+  fetch: app.fetch,
+  port
+});
 
 export default app;
