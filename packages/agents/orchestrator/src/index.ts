@@ -1,162 +1,545 @@
 import { Deal, DealStage, AgentType } from '@closepilot/core';
-import { DealStateMachine } from './state-machine';
-import { ApprovalQueue } from './approval-queue';
-import { Monitor } from './monitor';
-import { AuditLog } from './audit-log';
-import { ReportingService, PerformanceReport } from './reporting';
-import { AgentDispatcher } from './agent-dispatcher';
+import { DealStateMachine, TransitionResult } from './state-machine.js';
+import { AgentDispatcher, AgentExecutionResult } from './agent-dispatcher.js';
+import { ApprovalQueueManager, ApprovalStatus } from './approval-queue.js';
+import { AgentHealthMonitor } from './monitor.js';
+import { AuditLog, AuditEventType } from './audit-log.js';
+import { PerformanceReporter, ReportFormat } from './reporting.js';
 
-export class OrchestratorAgent {
-  private stateMachine: DealStateMachine;
-  private approvalQueue: ApprovalQueue;
-  private monitor: Monitor;
-  private auditLog: AuditLog;
-  private reportingService: ReportingService;
+/**
+ * Orchestrator configuration
+ */
+export interface OrchestratorConfig {
+  maxConcurrentDeals: number;
+  healthCheckInterval: number;
+  reportInterval: number;
+  approvalTimeout: number;
+  enableMonitoring: boolean;
+  enableReporting: boolean;
+}
+
+/**
+ * Deal processing result
+ */
+export interface DealProcessingResult {
+  dealId: string;
+  success: boolean;
+  finalStage: DealStage;
+  executionResults: AgentExecutionResult[];
+  error?: Error;
+  requiredApproval: boolean;
+  approvalGranted?: boolean;
+}
+
+/**
+ * Orchestrator statistics
+ */
+export interface OrchestratorStats {
+  totalDealsProcessed: number;
+  activeDeals: number;
+  completedDeals: number;
+  failedDeals: number;
+  pendingApprovals: number;
+  averageProcessingTime: number;
+}
+
+/**
+ * Closepilot Orchestrator
+ *
+ * Main orchestrator that coordinates all agents and manages
+ * the deal lifecycle state machine.
+ */
+export class Orchestrator {
+  private stateMachine: typeof DealStateMachine;
   private dispatcher: AgentDispatcher;
+  private approvalQueue: ApprovalQueueManager;
+  private healthMonitor: AgentHealthMonitor;
+  private auditLog: AuditLog;
+  private reporter: PerformanceReporter;
 
-  private activeTasks: Set<Promise<void>> = new Set();
-  private MAX_CONCURRENCY = 10; // Handle 10+ deals
+  private config: OrchestratorConfig;
+  private running = false;
+  private healthCheckTimer?: NodeJS.Timeout;
+  private reportTimer?: NodeJS.Timeout;
+  private activeDeals: Map<string, Promise<DealProcessingResult>>;
 
-  constructor() {
-    this.stateMachine = new DealStateMachine();
-    this.approvalQueue = new ApprovalQueue();
-    this.monitor = new Monitor();
+  private static readonly DEFAULT_CONFIG: OrchestratorConfig = {
+    maxConcurrentDeals: 10,
+    healthCheckInterval: 60000, // 1 minute
+    reportInterval: 3600000, // 1 hour
+    approvalTimeout: 86400000, // 24 hours
+    enableMonitoring: true,
+    enableReporting: true,
+  };
+
+  constructor(config: Partial<OrchestratorConfig> = {}) {
+    this.config = { ...Orchestrator.DEFAULT_CONFIG, ...config };
+    this.activeDeals = new Map();
+
+    // Initialize components
+    this.stateMachine = DealStateMachine;
+    this.dispatcher = new AgentDispatcher(this.config.maxConcurrentDeals);
+    this.approvalQueue = new ApprovalQueueManager();
+    this.healthMonitor = new AgentHealthMonitor();
     this.auditLog = new AuditLog();
-    this.reportingService = new ReportingService(this.auditLog, this.monitor);
-    this.dispatcher = new AgentDispatcher();
+    this.reporter = new PerformanceReporter(
+      this.healthMonitor,
+      this.auditLog,
+      this.approvalQueue
+    );
   }
 
-  public async processDeal(deal: Deal): Promise<void> {
-    // Implement simple backpressure / concurrency control
-    while (this.activeTasks.size >= this.MAX_CONCURRENCY) {
-      await Promise.race(this.activeTasks);
+  /**
+   * Start the orchestrator
+   */
+  async start(): Promise<void> {
+    if (this.running) {
+      throw new Error('Orchestrator is already running');
     }
 
-    const task = this._processDealCycle(deal).finally(() => {
-      this.activeTasks.delete(task);
-    });
-    this.activeTasks.add(task);
+    this.running = true;
+    this.auditLog.logSystemEvent(
+      'system',
+      'Orchestrator started',
+      'orchestrator',
+      { config: this.config }
+    );
+
+    // Start health check routine
+    if (this.config.enableMonitoring) {
+      this.startHealthCheckRoutine();
+    }
+
+    // Start reporting routine
+    if (this.config.enableReporting) {
+      this.startReportingRoutine();
+    }
   }
 
-  private async _processDealCycle(deal: Deal): Promise<void> {
-    this.monitor.trackDealStart(deal);
+  /**
+   * Stop the orchestrator
+   */
+  async stop(): Promise<void> {
+    if (!this.running) {
+      return;
+    }
 
-    let isProcessing = true;
-    while (isProcessing) {
-      // Check if it's in a terminal state
-      if (deal.stage === DealStage.COMPLETED || deal.stage === DealStage.FAILED) {
-        this.monitor.trackDealCompletion(deal.id);
-        break;
-      }
+    this.running = false;
 
-      // Determine next stage
-      const nextExpectedStage = this.stateMachine.getNextExpectedStage(deal.stage);
-      if (!nextExpectedStage) {
-        isProcessing = false;
-        break;
-      }
+    // Clear timers
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
+    }
+    if (this.reportTimer) {
+      clearInterval(this.reportTimer);
+    }
 
-      const agentType = this.mapStageToAgent(deal.stage);
-      if (!agentType) {
-        this._transitionDeal(deal, DealStage.FAILED, 'No suitable agent found for stage');
-        break;
-      }
+    // Wait for active deals to complete
+    await this.waitForActiveDeals();
 
-      const startTime = Date.now();
+    // Shutdown dispatcher
+    await this.dispatcher.shutdown();
 
-      // Dispatch to external agent
-      const result = await this.dispatcher.dispatch(agentType, deal);
+    this.auditLog.logSystemEvent(
+      'system',
+      'Orchestrator stopped',
+      'orchestrator'
+    );
+  }
 
-      const durationMs = Date.now() - startTime;
-      this.monitor.trackAgentExecution(agentType, deal.id, durationMs, result.success);
-      this.auditLog.logAgentExecution(deal.id, agentType, result.success, durationMs);
+  /**
+   * Process a deal through the lifecycle
+   */
+  async processDeal(deal: Deal): Promise<DealProcessingResult> {
+    if (!this.running) {
+      throw new Error('Orchestrator is not running');
+    }
 
-      if (result.success && result.nextStage) {
-        // If it was the proposal stage and requires approval
-        if (result.requiresApproval || (deal.stage === DealStage.PROPOSAL && this.approvalQueue.requiresApproval(deal))) {
-          this.approvalQueue.enqueue(deal);
-          this.auditLog.logApprovalStatus(deal.id, 'pending', deal.proposal?.pricing?.total || 0);
-          isProcessing = false; // Stop automatic progression, wait for manual approval
-        } else {
-          // Transition safely
-          if (this.stateMachine.canTransition(deal.stage, result.nextStage)) {
-             this._transitionDeal(deal, result.nextStage);
+    // Check if already processing
+    if (this.activeDeals.has(deal.id)) {
+      throw new Error(`Deal ${deal.id} is already being processed`);
+    }
+
+    const processingPromise = this.processDealInternal(deal);
+    this.activeDeals.set(deal.id, processingPromise);
+
+    try {
+      const result = await processingPromise;
+      return result;
+    } finally {
+      this.activeDeals.delete(deal.id);
+    }
+  }
+
+  /**
+   * Internal deal processing logic
+   */
+  private async processDealInternal(deal: Deal): Promise<DealProcessingResult> {
+    const executionResults: AgentExecutionResult[] = [];
+    let currentDeal = { ...deal };
+    let requiredApproval = false;
+    let approvalGranted = false;
+
+    try {
+      // Log deal creation
+      this.auditLog.logDealCreation(currentDeal, 'orchestrator');
+
+      // Process through stages until completion or failure
+      while (
+        !DealStateMachine.isFinalStage(currentDeal.stage) &&
+        this.running
+      ) {
+        // Get next stage
+        const nextStages = DealStateMachine.getNextStages(currentDeal.stage);
+        if (nextStages.length === 0) {
+          break;
+        }
+
+        const targetStage = nextStages[0]; // Take first valid transition
+
+        // Validate transition
+        const validation = DealStateMachine.validateTransition(
+          currentDeal.stage,
+          targetStage,
+          currentDeal.proposal
+        );
+
+        if (!validation.valid) {
+          throw new Error(validation.error);
+        }
+
+        // Check if approval required
+        if (validation.requiresApproval) {
+          requiredApproval = true;
+          await this.handleApprovalRequired(currentDeal);
+          // Wait for approval (simplified - in production, use event/notification)
+          const approval = this.approvalQueue.getApprovalByDeal(currentDeal.id);
+          if (
+            approval &&
+            approval.status === ApprovalStatus.APPROVED
+          ) {
+            approvalGranted = true;
           } else {
-             this._transitionDeal(deal, DealStage.FAILED, 'Invalid state transition requested by agent');
+            throw new Error('Approval required but not granted');
           }
         }
-      } else {
-        // Failed execution
-        this._transitionDeal(deal, DealStage.FAILED, result.errors?.join(', '));
+
+        // Execute agent for this stage
+        const executionResult = await this.dispatcher.executeAgent(
+          currentDeal,
+          targetStage
+        );
+
+        executionResults.push(executionResult);
+
+        // Record execution in audit log
+        this.auditLog.logAgentExecution(
+          currentDeal.id,
+          {
+            agentType: executionResult.agentType,
+            executionId: executionResult.metadata.toStage + '-' + Date.now(),
+            success: executionResult.success,
+            duration: executionResult.duration,
+            error: executionResult.error?.message,
+          },
+          'orchestrator'
+        );
+
+        // Record in health monitor
+        this.healthMonitor.recordExecution(
+          executionResult.agentType,
+          executionResult.success,
+          executionResult.duration
+        );
+
+        // Check if execution failed
+        if (!executionResult.success) {
+          // Transition to failed stage
+          this.auditLog.logStateTransition(
+            currentDeal.id,
+            {
+              fromStage: currentDeal.stage,
+              toStage: DealStage.FAILED,
+              reason: executionResult.error?.message || 'Agent execution failed',
+              requiresApproval: false,
+              retryCount: executionResult.retryCount,
+            },
+            'orchestrator'
+          );
+
+          currentDeal.stage = DealStage.FAILED;
+          break;
+        }
+
+        // Transition to next stage
+        const oldStage = currentDeal.stage;
+        currentDeal.stage = targetStage;
+
+        this.auditLog.logStateTransition(
+          currentDeal.id,
+          {
+            fromStage: oldStage,
+            toStage: targetStage,
+            reason: 'Stage completed successfully',
+            requiresApproval: validation.requiresApproval,
+          },
+          'orchestrator'
+        );
+
+        // Update deal with agent output data
+        if (executionResult.output?.data) {
+          currentDeal = { ...currentDeal, ...executionResult.output.data };
+        }
       }
+
+      return {
+        dealId: currentDeal.id,
+        success: currentDeal.stage === DealStage.COMPLETED,
+        finalStage: currentDeal.stage,
+        executionResults,
+        requiredApproval,
+        approvalGranted,
+      };
+    } catch (error) {
+      // Log error
+      this.auditLog.logError(
+        currentDeal.id,
+        'PROCESSING_ERROR',
+        (error as Error).message,
+        'orchestrator'
+      );
+
+      return {
+        dealId: currentDeal.id,
+        success: false,
+        finalStage: DealStage.FAILED,
+        executionResults,
+        error: error as Error,
+        requiredApproval,
+        approvalGranted,
+      };
     }
   }
 
-  private _transitionDeal(deal: Deal, toStage: DealStage, reason?: string) {
-    const fromStage = deal.stage;
-    deal.stage = toStage;
-    deal.updatedAt = new Date();
+  /**
+   * Handle approval requirement
+   */
+  private async handleApprovalRequired(deal: Deal): Promise<void> {
+    const approval = await this.approvalQueue.addToQueue(
+      deal,
+      `Proposal total exceeds threshold: ${deal.proposal?.pricing.total || 0}`,
+      'orchestrator'
+    );
 
-    this.auditLog.logStageChange(deal.id, fromStage, toStage);
-    this.monitor.trackDealUpdate(deal);
+    this.auditLog.logApprovalRequest(
+      deal.id,
+      approval.id,
+      approval.reason,
+      'orchestrator'
+    );
+  }
 
-    if (toStage === DealStage.COMPLETED || toStage === DealStage.FAILED) {
-      this.monitor.trackDealCompletion(deal.id);
+  /**
+   * Process approval decision
+   */
+  async processApprovalDecision(
+    approvalId: string,
+    approved: boolean,
+    reviewer: string,
+    comment?: string
+  ): Promise<void> {
+    const decision = {
+      approvalId,
+      approved,
+      reviewer,
+      comment,
+      reviewedAt: new Date(),
+    };
+
+    const approval = await this.approvalQueue.processApproval(decision);
+
+    this.auditLog.logApprovalDecision(
+      approval.dealId,
+      approvalId,
+      approved,
+      reviewer,
+      comment
+    );
+  }
+
+  /**
+   * Batch process multiple deals
+   */
+  async processDeals(deals: Deal[]): Promise<DealProcessingResult[]> {
+    const promises = deals.map(deal => this.processDeal(deal));
+    return Promise.all(promises);
+  }
+
+  /**
+   * Get orchestrator statistics
+   */
+  getStatistics(): OrchestratorStats {
+    const healthReport = this.healthMonitor.generateHealthReport();
+    const approvalStats = this.approvalQueue.getQueueStats();
+
+    return {
+      totalDealsProcessed: this.auditLog.size(),
+      activeDeals: this.activeDeals.size,
+      completedDeals: 0, // Calculate from audit log
+      failedDeals: 0, // Calculate from audit log
+      pendingApprovals: approvalStats.pending,
+      averageProcessingTime: 0, // Calculate from execution metrics
+    };
+  }
+
+  /**
+   * Generate performance report
+   */
+  async generateReport(
+    startDate: Date,
+    endDate: Date,
+    deals: Deal[]
+  ): Promise<string> {
+    const report = await this.reporter.generatePerformanceReport(
+      startDate,
+      endDate,
+      deals
+    );
+    return this.reporter.exportReport(report, ReportFormat.JSON);
+  }
+
+  /**
+   * Get health status
+   */
+  getHealthStatus() {
+    return this.healthMonitor.generateHealthReport();
+  }
+
+  /**
+   * Get pending approvals
+   */
+  getPendingApprovals() {
+    return this.approvalQueue.getPendingApprovals();
+  }
+
+  /**
+   * Start health check routine
+   */
+  private startHealthCheckRoutine(): void {
+    this.healthCheckTimer = setInterval(() => {
+      const healthReport = this.healthMonitor.generateHealthReport();
+
+      // Log health status
+      this.auditLog.logSystemEvent(
+        'system',
+        'Health check completed',
+        'orchestrator',
+        {
+          overallStatus: healthReport.overallStatus,
+          summary: healthReport.summary,
+        }
+      );
+
+      // Check for unhealthy agents
+      for (const [agentType, health] of healthReport.agentHealth) {
+        if (health.status !== 'healthy') {
+          console.warn(
+            `Agent ${agentType} is ${health.status}: ${health.issues.join(', ')}`
+          );
+        }
+      }
+    }, this.config.healthCheckInterval);
+  }
+
+  /**
+   * Start reporting routine
+   */
+  private startReportingRoutine(): void {
+    this.reportTimer = setInterval(async () => {
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - this.config.reportInterval);
+
+      this.auditLog.logSystemEvent(
+        'system',
+        'Generating scheduled performance report',
+        'orchestrator',
+        { period: { startDate, endDate } }
+      );
+    }, this.config.reportInterval);
+  }
+
+  /**
+   * Wait for active deals to complete
+   */
+  private async waitForActiveDeals(timeout = 30000): Promise<void> {
+    const startTime = Date.now();
+
+    while (this.activeDeals.size > 0) {
+      if (Date.now() - startTime > timeout) {
+        throw new Error('Timeout waiting for active deals to complete');
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
-  public approveDeal(dealId: string): void {
-    const request = this.approvalQueue.getRequest(dealId);
-    if (!request) throw new Error('No pending approval request found');
-
-    this.approvalQueue.approve(dealId);
-    this.auditLog.logApprovalStatus(dealId, 'approved', request.amount);
-
-    // After approval, automatically transition to CRM_SYNC
-    if (this.stateMachine.canTransition(request.deal.stage, DealStage.CRM_SYNC)) {
-      this._transitionDeal(request.deal, DealStage.CRM_SYNC);
-      // Resume the pipeline
-      this.processDeal(request.deal);
-    }
+  /**
+   * Check if orchestrator is running
+   */
+  isRunning(): boolean {
+    return this.running;
   }
 
-  public rejectDeal(dealId: string): void {
-    const request = this.approvalQueue.getRequest(dealId);
-    if (!request) throw new Error('No pending approval request found');
-
-    this.approvalQueue.reject(dealId);
-    this.auditLog.logApprovalStatus(dealId, 'rejected', request.amount);
-
-    if (this.stateMachine.canTransition(request.deal.stage, DealStage.FAILED)) {
-       this._transitionDeal(request.deal, DealStage.FAILED, 'Proposal rejected by approver');
-    }
-  }
-
-  public getReport(): PerformanceReport {
-    return this.reportingService.generateReport();
-  }
-
-  public async waitForAllDeals(): Promise<void> {
-    while (this.activeTasks.size > 0) {
-      await Promise.all(this.activeTasks);
-    }
-  }
-
-  private mapStageToAgent(stage: DealStage): AgentType | null {
-    switch (stage) {
-      case DealStage.INGESTION: return AgentType.INGESTION;
-      case DealStage.ENRICHMENT: return AgentType.ENRICHMENT;
-      case DealStage.SCOPING: return AgentType.SCOPING;
-      case DealStage.PROPOSAL: return AgentType.PROPOSAL;
-      case DealStage.CRM_SYNC: return AgentType.CRM_SYNC;
-      default: return null;
-    }
+  /**
+   * Get configuration
+   */
+  getConfig(): OrchestratorConfig {
+    return { ...this.config };
   }
 }
 
-export * from './state-machine';
-export * from './approval-queue';
-export * from './monitor';
-export * from './audit-log';
-export * from './reporting';
-export * from './agent-dispatcher';
+// Export all modules
+export { DealStateMachine } from './state-machine.js';
+export { AgentDispatcher } from './agent-dispatcher.js';
+export { ApprovalQueueManager, ApprovalStatus } from './approval-queue.js';
+export {
+  AgentHealthMonitor,
+  AgentHealthStatus,
+  SystemHealthReport,
+} from './monitor.js';
+export { AuditLog, AuditEventType } from './audit-log.js';
+export {
+  PerformanceReporter,
+  ReportFormat,
+  PerformanceReport,
+  SummaryReport,
+} from './reporting.js';
+
+export type {
+  TransitionResult,
+  TransitionMetadata,
+} from './state-machine.js';
+export type {
+  AgentConfig,
+  AgentExecutionResult,
+  WorkerPoolConfig,
+} from './agent-dispatcher.js';
+export type {
+  ApprovalRequest,
+  ApprovalDecision,
+  ApprovalQueueStats,
+} from './approval-queue.js';
+export type {
+  AgentMetric,
+  CircuitBreakerState,
+  HealthCheckResult,
+} from './monitor.js';
+export type {
+  AuditLogEntry,
+  StateTransitionAudit,
+  AgentExecutionAudit,
+  AuditLogQuery,
+} from './audit-log.js';
+export type {
+  ThroughputMetrics,
+  AgentPerformanceStats,
+} from './reporting.js';
