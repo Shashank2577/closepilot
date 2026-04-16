@@ -1,0 +1,120 @@
+{
+  "repo": "Shashank2577/closepilot",
+  "branch": "main",
+  "spec_file": "docs/FOR_JULES.md",
+  "created_at": "2026-04-15T23:30:00Z",
+  "total_tasks": 15,
+  "batches": [
+    {
+      "batch": 1,
+      "name": "Foundation Infrastructure",
+      "rationale": "Database and MCP tools - no dependencies between them",
+      "tasks": [
+        {
+          "id": "J-101",
+          "title": "Implement Deal Store MCP Database Tools",
+          "prompt": "Implement PostgreSQL database operations with Drizzle ORM for the Closepilot deal lifecycle system.\n\nContext: You're working on the Deal Store MCP tools (packages/mcp-server/src/tools/deal-store.ts) and database queries (packages/db/src/queries/deals.ts).\n\nRequired functions:\n1. createDeal(input: NewDeal) - Insert deal into database\n2. getDeal(dealId: string) - Query deal by ID  \n3. updateDeal(dealId: string, updates: Partial<Deal>) - Update deal fields\n4. updateDealStage(dealId: string, stage: DealStage, reason?: string) - Change stage with validation\n5. queryDealsByStage(stage: DealStage) - Filter deals by stage\n6. queryDealsByDateRange(startDate: Date, endDate: Date) - Filter by date range\n7. getPendingApprovals() - Get deals where approvalStatus = 'pending'\n8. approveDeal(dealId: string, approverComment?: string) - Mark as approved\n9. rejectDeal(dealId: string, reason: string) - Mark as rejected\n10. searchSimilarDeals(query: string, limit: number) - Simple text search\n\nDatabase schema is in packages/db/src/schema/deals.ts with DealStage enum and Deal interface.\n\nUse Drizzle ORM with PostgreSQL. Implement proper error handling and parameter validation.\n\nWrite tests using the mock client from packages/mcp-client/src/mocks.ts.",
+          "depends_on": []
+        },
+        {
+          "id": "J-102",
+          "title": "Implement Gmail Integration Tools",
+          "prompt": "Implement Gmail API integration with OAuth 2.0 for the Closepilot system.\n\nContext: You're working on packages/mcp-server/src/tools/gmail.ts (MCP server handlers) and packages/mcp-client/src/tools/gmail.ts (client wrappers).\n\nRequired functions:\n1. searchEmails(query: GmailQuery) - Advanced search with filters\n2. getThread(threadId: string) - Get full thread with all messages\n3. getMessage(messageId: string) - Get single email message\n4. sendEmail(params) - Compose and send email\n5. extractEmailContext(messageId: string) - Claude AI analysis for lead qualification\n6. getRecentThreads(limit: number) - Get recent threads\n7. watchEmails(topic: string) - Set up push notifications\n8. stopWatching() - Stop push notifications\n\nUse Gmail API with OAuth 2.0. Implement MIME message parsing for HTML/text content and attachments.\n\nUse Claude API for intelligent context extraction from emails. Support pagination for large result sets.\n\nWrite tests with mock Gmail responses.",
+          "depends_on": []
+        },
+        {
+          "id": "J-103",
+          "title": "Implement Calendar Integration Tools",
+          "prompt": "Implement Google Calendar API integration for meeting scheduling in Closepilot.\n\nContext: You're working on packages/mcp-server/src/tools/calendar.ts and packages/mcp-client/src/tools/calendar.ts.\n\nRequired functions:\n1. createEvent(params) - Create event with Google Meet integration\n2. getEvent(eventId) - Get event by ID\n3. updateEvent(eventId, updates) - Update event details\n4. deleteEvent(eventId) - Cancel/delete event\n5. checkAvailability(check: AvailabilityCheck) - Check attendee availability\n6. scheduleMeeting(input: MeetingInput) - Find best time and schedule\n7. listUpcomingEvents(startDate, endDate, maxResults) - Get events in range\n8. findAvailableSlots(params) - Find multiple time slots\n\nUse Google Calendar API with Free/busy API for availability checking. Implement timezone handling with luxon. Support recurring events and attendee response tracking.\n\nGoogle Meet integration should automatically generate hangoutLink via conferenceData.\n\nWrite tests with mock calendar responses.",
+          "depends_on": []
+        },
+        {
+          "id": "J-104",
+          "title": "Implement Drive Document Generation Tools",
+          "prompt": "Implement Google Drive/Docs integration for template-based document generation.\n\nContext: You're working on packages/mcp-server/src/tools/drive.ts and packages/mcp-client/src/tools/drive.ts.\n\nRequired functions:\n1. listTemplates(type?: string) - List templates from Drive folder\n2. getTemplate(templateId: string) - Get template with placeholders\n3. generateDocument(request: DocumentGenerationRequest) - Generate from template\n4. getDocument(documentId: string) - Get generated document info\n5. updateDocumentStatus(documentId, status) - Update status\n6. createFolder(name, parentId) - Create folder in Drive\n7. listFolder(folderId) - List documents in folder\n8. copyDocument(documentId, destinationFolderId, newTitle) - Copy document\n9. shareDocument(documentId, emails, role) - Share with permissions\n10. getDownloadUrl(documentId) - Get download URL\n\nUse Google Drive API with service account JWT authentication. Implement template-based generation with {{placeholder}} replacement.\n\nSupport .docx and PDF output formats. Document status workflow: draft → pending_review → approved/rejected.\n\nImplement permission management (reader, writer, commenter). Write tests with mock Drive responses.",
+          "depends_on": []
+        },
+        {
+          "id": "J-105",
+          "title": "Implement Ingestion Agent",
+          "prompt": "Implement the Ingestion Agent that monitors Gmail and classifies B2B leads.\n\nContext: You're creating packages/agents/ingestion/ with the following files:\n- src/index.ts - Main orchestrator\n- src/email-classifier.ts - AI-based lead classification  \n- src/lead-extractor.ts - Extract lead info from emails\n- src/monitor.ts - Gmail monitoring loop\n\nResponsibilities:\n1. Monitor Gmail for new emails (every 5 minutes)\n2. Classify emails as B2B lead inquiries using Claude API\n3. Extract lead information: name, email, company, title\n4. Create deals in database via J-101 Deal Store tools\n5. Extract initial context (requirements, budget, timeline, urgency)\n6. Set deal stage to 'enrichment'\n7. Log all activities for audit trail\n\nUse @closepilot/core for types, @closepilot/mcp-client for DealStoreTools and GmailTools, and @anthropic-ai/sdk for Claude API.\n\nClaude prompts:\n- Classification: \"Is this email a B2B lead inquiry? Respond yes/no with confidence score\"\n- Context extraction: \"Extract from this email: requirements, budget mention, timeline mention, urgency level\"\n\nWrite tests with mock Gmail and Deal Store responses.",
+          "depends_on": ["J-101", "J-102"]
+        }
+      ]
+    },
+    {
+      "batch": 2,
+      "name": "Research & Analysis Agents",
+      "rationale": "Depend on Batch 1 infrastructure (database, tools) but are independent of each other",
+      "tasks": [
+        {
+          "id": "J-106",
+          "title": "Implement Enrichment Agent",
+          "prompt": "Implement the Enrichment Agent that researches companies and prospects.\n\nContext: You're creating packages/agents/enrichment/ with:\n- src/index.ts - Main orchestrator\n- src/company-researcher.ts - Company research\n- src/prospect-researcher.ts - Prospect research\n- src/data-sources.ts - API integrations\n- src/activity-logger.ts - Audit trail\n\nResponsibilities:\n1. Receive deal in 'enrichment' stage\n2. Research company: industry, size, funding, tech stack, competitors\n3. Research prospect: LinkedIn, background, decision maker status\n4. Use multiple data sources: LinkedIn, Crunchbase, Clearbit, Google Search\n5. Update deal with companyResearch and prospectResearch\n6. Set deal stage to 'scoping'\n7. Log enrichment activities\n\nData sources (stub with TODO comments for future API integrations):\n- LinkedIn profile search\n- Crunchbase company/funding data\n- Clearbit company enrichment\n- Google Search for general information\n- Company website scraping\n\nClaude prompts:\n- Company synthesis: \"Summarize company: industry, size, funding, tech stack, competitors\"\n- Decision maker analysis: \"Is this person a decision maker? What's their influence level?\"\n\nWrite tests with mock API responses.",
+          "depends_on": ["J-101", "J-105"]
+        },
+        {
+          "id": "J-107",
+          "title": "Implement Scoping Agent",
+          "prompt": "Implement the Scoping Agent that analyzes requirements and defines project scope.\n\nContext: You're creating packages/agents/scoping/ with:\n- src/index.ts - Main orchestrator\n- src/requirement-extractor.ts - Extract requirements\n- src/scope-definer.ts - Define project scope\n- src/complexity-analyzer.ts - Calculate complexity\n- src/clarification-generator.ts - Generate emails\n\nResponsibilities:\n1. Receive deal in 'scoping' stage\n2. Analyze email threads for project requirements\n3. Extract and categorize requirements (functional, technical, timeline, budget)\n4. Define project scope: timeline, budget, complexity, services, deliverables\n5. Identify assumptions and risks\n6. Calculate complexity score (0-100, mapped to low/medium/high)\n7. Generate clarification email if info missing\n8. Update deal with projectScope and requirements\n9. Set stage to 'proposal' when complete\n\nClaude prompts:\n- Requirement extraction: \"Extract all requirements mentioned. Categorize by: functional, technical, timeline, budget. Mark as explicit/implicit.\"\n- Scope definition: \"Based on these requirements, define project scope: title, description, estimated timeline, budget range, complexity, services needed, deliverables\"\n\nComplexity scoring factors: number of requirements, ambiguity level, technical complexity, integration needs.\n\nWrite tests with sample email threads.",
+          "depends_on": ["J-101", "J-106"]
+        },
+        {
+          "id": "J-108",
+          "title": "Implement Proposal Agent",
+          "prompt": "Implement the Proposal Agent that generates B2B proposals.\n\nContext: You're creating packages/agents/proposal/ with:\n- src/index.ts - Main orchestrator\n- src/content-generator.ts - Generate text sections\n- src/template-selector.ts - Select templates\n- src/pricing-strategy.ts - Calculate pricing\n- src/case-study-matcher.ts - Find case studies\n\nResponsibilities:\n1. Receive deal in 'proposal' stage with projectScope\n2. Select template based on service type and complexity\n3. Generate proposal content:\n   - Executive summary (customized to prospect)\n   - Detailed scope of work\n   - Timeline with milestones\n   - Pricing breakdown\n   - Terms and conditions\n   - Next steps\n4. Generate document using J-104 Drive tools\n5. Include 2-3 relevant case studies\n6. Update deal with proposal and proposalDocumentId\n7. Submit for approval if over $50k\n8. Set stage to 'crm_sync' (or wait for approval)\n\nPricing strategies:\n- Standard: 10-20% margin, fixed timeline\n- Premium: 25-35% margin, faster timeline, priority support\n- Custom: Negotiated pricing, enterprise terms\n\nClaude prompt for executive summary: \"Write a 3-sentence executive summary for {service} proposal to {company}. Address pain point: {pain point}.\"\n\nWrite tests with mock Drive tools.",
+          "depends_on": ["J-101", "J-104", "J-107"]
+        },
+        {
+          "id": "J-109",
+          "title": "Implement CRM Sync Agent",
+          "prompt": "Implement the CRM Sync Agent that syncs deals to CRM systems.\n\nContext: You're creating packages/agents/crm-sync/ with:\n- src/index.ts - Main orchestrator\n- src/crm-adapter.ts - Generic interface\n- src/hubspot-adapter.ts - HubSpot implementation\n- src/salesforce-adapter.ts - Salesforce implementation\n- src/pipedrive-adapter.ts - Pipedrive implementation\n- src/field-mapper.ts - Field mapping\n- src/activity-sync.ts - Activity sync\n\nResponsibilities:\n1. Receive deal in 'crm_sync' stage with approved proposal\n2. Connect to CRM system (HubSpot/Salesforce/Pipedrive)\n3. Create/update Contact record with lead information\n4. Create/update Deal/Opportunity record\n5. Map Closepilot fields to CRM fields\n6. Sync all activities to CRM timeline\n7. Attach proposal document\n8. Update deal with crmId and crmSyncedAt\n9. Set stage to 'completed'\n10. Handle sync errors with retry logic (3x with exponential backoff)\n\nCRM field mappings (example for HubSpot):\n- deal.leadEmail → contact.email\n- deal.leadName → contact.firstname, contact.lastname\n- deal.leadCompany → contact.company\n- deal.proposal.title → deal.dealname\n- deal.proposal.pricing.total → deal.amount\n- deal.stage → deal.dealstage\n- deal.createdAt → deal.createdate\n\nDependencies: @hubspot/api-client, jsforce, pipedrive.\n\nWrite tests with mock CRM responses.",
+          "depends_on": ["J-101", "J-108"]
+        },
+        {
+          "id": "J-110",
+          "title": "Implement Orchestrator Agent",
+          "prompt": "Implement the Orchestrator Agent - the central coordinator for Closepilot.\n\nContext: You're creating packages/agents/orchestrator/ with:\n- src/index.ts - Main orchestrator\n- src/state-machine.ts - State machine\n- src/agent-dispatcher.ts - Dispatcher\n- src/approval-queue.ts - Approval manager\n- src/monitor.ts - Health monitor\n- src/audit-log.ts - Audit trail\n- src/reporting.ts - Reports\n\nThis is the MOST CRITICAL agent. It coordinates all other agents (J-105 through J-109).\n\nResponsibilities:\n1. Manage deal lifecycle state machine (stage transitions)\n2. Trigger appropriate agents based on deal stage\n3. Coordinate handoffs between agents\n4. Manage approval queue for critical actions\n5. Monitor agent execution and handle errors\n6. Implement retry logic (3x with exponential backoff)\n7. Provide audit trail for all actions\n8. Handle concurrent deal processing (10+ concurrent)\n9. Generate performance reports\n\nState machine:\ningestion → enrichment: Auto (J-105 complete)\nenrichment → scoping: Auto (J-106 complete)\nscoping → proposal: Auto (J-107 complete)\nproposal → crm_sync: Requires approval if >$50k (J-108 complete)\ncrm_sync → completed: Auto (J-109 complete)\nAny stage → failed: After 3 retry failures\n\nApproval rules:\n- Proposals over $50k require approval\n- High complexity projects require approval\n- Deal stage blocked until all approvals complete\n\nMonitoring features:\n- Heartbeat checks for all agents\n- Track agent execution times\n- Track success/failure rates\n- Alert on agent failures\n- Generate daily performance reports\n\nConcurrency: Worker pool pattern (max 10 concurrent deals), queue-based task distribution, graceful error handling.\n\nWrite comprehensive tests.",
+          "depends_on": ["J-105", "J-106", "J-107", "J-108", "J-109"]
+        }
+      ]
+    },
+    {
+      "batch": 3,
+      "name": "API & Web Application",
+      "rationale": "Depend on all agents being complete, but API and UI can be built in parallel",
+      "tasks": [
+        {
+          "id": "J-111",
+          "title": "Implement Deal CRUD API Endpoints",
+          "prompt": "Implement REST API endpoints for deal management.\n\nContext: You're working on packages/api/src/routes/deals.ts.\n\nRequired endpoints:\n1. GET /api/deals - List deals with filters, pagination, sorting\n2. GET /api/deals/stats - Get deal statistics by stage\n3. GET /api/deals/search/similar - Search similar deals\n4. GET /api/deals/:id - Get specific deal by ID\n5. POST /api/deals - Create new deal with Zod validation\n6. PUT /api/deals/:id - Update deal with validation\n7. PATCH /api/deals/:id/stage - Update deal stage with transition validation\n8. DELETE /api/deals/:id - Soft delete (set stage to 'failed')\n\nUse Zod schemas for request validation. Return consistent error responses: { error: string, details?: any }.\n\nIntegration: Use database query functions from J-101.\n\nWrite tests for all endpoints.",
+          "depends_on": ["J-101", "J-110"]
+        },
+        {
+          "id": "J-112",
+          "title": "Implement Deal Pipeline Dashboard UI",
+          "prompt": "Implement the Kanban board dashboard for deal pipeline visualization.\n\nContext: You're creating components in packages/web/components/:\n- kanban/KanbanBoard.tsx - Main board\n- kanban/KanbanColumn.tsx - Stage column\n- deals/DealCard.tsx - Draggable deal card\n- deals/DealModal.tsx - Detail modal\n- deals/DealStats.tsx - Statistics row\n- filters/FilterBar.tsx - Filter controls\n- filters/SearchBar.tsx - Search input\n- lib/api.ts - API client functions\n- components/Providers.tsx - React Query provider\n- app/page.tsx - Main dashboard\n\nFeatures:\n- Kanban board with 6 columns: Ingestion, Enrichment, Scoping, Proposal, CRM Sync, Completed\n- Drag-and-drop between columns using @dnd-kit/core\n- Deal cards show: name, company, stage badge, created date\n- Quick view modal with full deal details\n- Filter by stage, date range, assignee\n- Search by name, company, email\n- Real-time updates via SSE (from J-115)\n- Statistics: total deals, new this week, pending, completed\n\nDependencies: @dnd-kit/core, @tanstack/react-query, Tailwind CSS, shadcn/ui.\n\nIntegration: GET /api/deals, PATCH /api/deals/:id/stage, SSE from J-115.\n\nWrite tests for all components.",
+          "depends_on": ["J-111"]
+        },
+        {
+          "id": "J-113",
+          "title": "Implement Google OAuth Authentication Flow",
+          "prompt": "Implement Google OAuth 2.0 authentication with PKCE.\n\nContext: You're creating:\n- lib/auth/oauth.ts - OAuth core library (PKCE, token management)\n- app/auth/signin/route.ts - Generate OAuth URL\n- app/auth/callback/route.ts - Exchange code for tokens\n- app/auth/logout/route.ts - Clear session\n- app/auth/refresh/route.ts - Refresh tokens (internal)\n- app/api/user/route.ts - Fetch user info\n- components/auth/SignInButton.tsx - Login button\n- components/auth/UserMenu.tsx - User avatar dropdown\n- components/auth/AuthNav.tsx - Navigation component\n- middleware.ts - Route protection\n\nOAuth flow:\n1. User clicks \"Sign in with Google\"\n2. Redirect to /auth/signin (generates OAuth URL with PKCE)\n3. User authorizes on Google\n4. Redirect to /auth/callback with authorization code\n5. Exchange code for access token and refresh token\n6. Store tokens in httpOnly cookies (Secure, SameSite=strict)\n7. Redirect to dashboard\n\nScopes: Gmail (modify), Calendar, Drive (drive + documents), User info (profile).\n\nSecurity features:\n- PKCE (Proof Key for Code Exchange)\n- httpOnly cookies\n- Secure & SameSite flags\n- State parameter validation\n- Automatic token refresh\n- Short-lived state cookies (10 minutes)\n\nMiddleware protects routes requiring authentication, redirects to /auth/signin if not authenticated.\n\nPublic routes: /, /auth/signin, /auth/callback.\n\nWrite tests for all auth flows.",
+          "depends_on": []
+        },
+        {
+          "id": "J-114",
+          "title": "Implement Approval Queue API & Web UI",
+          "prompt": "Implement approval workflow system for high-value proposals.\n\nContext: You're creating:\n- packages/db/src/queries/approvals.ts - Database queries (5 functions)\n- packages/api/src/routes/approvals.ts - API endpoints (5 endpoints)\n- packages/web/app/approvals/page.tsx - Approval queue page\n- packages/web/components/approvals/ApprovalList.tsx - Main table\n- packages/web/components/approvals/ApprovalModal.tsx - Detail modal\n- packages/web/components/approvals/ApprovalHistory.tsx - History view\n- packages/web/components/approvals/ApprovalBadge.tsx - Status badge\n\nAPI endpoints:\n1. GET /api/approvals/pending - List pending approvals\n2. GET /api/approvals/deal/:dealId - Get approvals for deal\n3. POST /api/approvals - Create approval request\n4. POST /api/approvals/:id/approve - Approve with optional comment\n5. POST /api/approvals/:id/reject - Reject with required reason\n\nDatabase functions:\n- createApproval() - Create approval request\n- getApprovalById() - Get single approval\n- getApprovalsByDeal() - Get all approvals for deal\n- getPendingApprovalRecords() - List pending approvals\n- respondToApproval() - Approve or reject\n\nBusiness rules:\n- Proposals over $50k require approval\n- High complexity projects require approval\n- Deal stage transitions blocked until approvals complete\n- Email notifications (TODO: nodemailer or SendGrid integration)\n\nUI: Approval list table, approve/reject buttons, comment field (required for rejection), approval history view, real-time updates (SSE hook ready for J-115).\n\nWrite tests for all functionality.",
+          "depends_on": ["J-101", "J-110"]
+        },
+        {
+          "id": "J-115",
+          "title": "Implement Activity Streaming API & UI",
+          "prompt": "Implement real-time activity streaming with Server-Sent Events.\n\nContext: You're creating:\n- packages/api/src/routes/activities.ts - SSE endpoint and routes\n- packages/db/src/queries/activities.ts - Database queries (3 functions)\n- packages/web/components/activity/ActivityTimeline.tsx - Timeline for deals\n- packages/web/components/activity/ActivityFeed.tsx - Feed across all deals\n- packages/web/components/activity/useActivityStream.ts - SSE hook\n- packages/web/components/activity/ActivityItem.tsx - Single activity\n- packages/web/components/activity/ActivityIcon.tsx - Icon by agent type\n\nAPI endpoints:\n1. GET /api/activities/stream - SSE endpoint for real-time updates\n2. GET /api/activities/deal/:dealId - Get activities for deal\n3. GET /api/activities/recent - Get recent activities (limit 50)\n4. POST /api/activities - Create activity (called by agents)\n\nSSE implementation:\n- Content-Type: text/event-stream\n- Cache-Control: no-cache\n- Connection: keep-alive\n- Heartbeat every 30 seconds to keep connection alive\n- Event format: `event: message\\ndata: {json}\\n\\n`\n- In-memory storage for active connections\n- Broadcast to all connected clients on new activity\n\nUI components:\n- ActivityTimeline - Vertical timeline for single deal\n- ActivityFeed - Recent activities across all deals\n- useActivityStream hook - SSE connection management\n- Auto-reconnect on disconnect\n- \"Live\" indicator when connected\n\nAgent type icons and colors:\n- Ingestion: 📥 Blue\n- Enrichment: 🔍 Purple\n- Scoping: 📏 Yellow\n- Proposal: 📄 Orange\n- CRM Sync: 🔄 Green\n- Orchestrator: 🤖 Gray\n- System: ⚙️ Gray\n\nActivity types:\n- deal_created, deal_updated, stage_changed\n- email_received, email_sent\n- research_completed, scope_defined\n- proposal_generated, document_created\n- approval_requested, approval_approved, approval_rejected\n- crm_synced, agent_error, agent_started, agent_completed\n\nWrite tests for SSE streaming and UI components.",
+          "depends_on": ["J-101", "J-110"]
+        }
+      ]
+    }
+  ]
+}
