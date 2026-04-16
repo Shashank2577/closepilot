@@ -1,9 +1,9 @@
 import { activities } from '../schema';
 import { getDb } from '../db';
+import { desc, eq } from 'drizzle-orm';
 
 /**
- * Query stubs for activity operations
- * These will be implemented by Jules session J-101
+ * Database query functions for activity operations
  */
 
 export async function createActivity(data: {
@@ -13,13 +13,34 @@ export async function createActivity(data: {
   description: string;
   metadata?: string;
 }) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+  const db = getDb();
+  const [activity] = await db
+    .insert(activities)
+    .values({
+      dealId: data.dealId,
+      agentType: data.agentType,
+      activityType: data.activityType,
+      description: data.description,
+      metadata: data.metadata,
+    })
+    .returning();
+  return activity;
 }
 
 export async function getActivitiesByDeal(dealId: number) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+  const db = getDb();
+  return await db
+    .select()
+    .from(activities)
+    .where(eq(activities.dealId, dealId))
+    .orderBy(desc(activities.createdAt));
 }
 
 export async function getRecentActivities(limit = 50) {
-  throw new Error('Not implemented - Jules J-101 will implement');
+  const db = getDb();
+  return await db
+    .select()
+    .from(activities)
+    .orderBy(desc(activities.createdAt))
+    .limit(limit);
 }
