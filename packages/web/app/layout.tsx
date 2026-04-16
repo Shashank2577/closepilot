@@ -9,12 +9,12 @@ export const metadata: Metadata = {
   description: 'Automated deal flow engine for service businesses',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const accessToken = getAccessToken();
+  const accessToken = await getAccessToken();
   const isAuthenticated = !!accessToken;
 
   return (

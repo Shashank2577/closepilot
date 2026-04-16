@@ -121,7 +121,8 @@ export class GmailMonitor {
       console.log('Starting email processing cycle...');
 
       // Get recent threads
-      const threads = await this.gmailTools.getRecentThreads(20);
+      const threadsResult = await this.gmailTools.getRecentThreads(20);
+      const threads = threadsResult.threads;
       console.log(`Found ${threads.length} recent threads`);
 
       // Extract unique email IDs

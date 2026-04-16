@@ -1,5 +1,4 @@
-import { google } from 'googleapis';
-import { JWT } from 'google-auth-library';
+import { google, Auth } from 'googleapis';
 
 /**
  * Google API authentication configuration
@@ -20,7 +19,7 @@ export function initializeGoogleClients() {
   }
 
   // Create JWT auth client
-  const auth = new JWT({
+  const auth = new Auth.JWT({
     email: credentials.clientEmail,
     key: credentials.privateKey,
     scopes: [

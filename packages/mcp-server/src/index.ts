@@ -327,7 +327,7 @@ async function main() {
 
   // Handle call tool request
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
+    const { name, arguments: args = {} } = request.params;
 
     try {
       const dealStoreResult = await handleDealStoreToolCall(name, args);

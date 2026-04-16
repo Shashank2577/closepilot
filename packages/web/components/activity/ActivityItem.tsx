@@ -1,6 +1,14 @@
 import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import { ActivityIcon } from './ActivityIcon';
+
+function timeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  if (seconds < 60) return rtf.format(-seconds, 'second');
+  if (seconds < 3600) return rtf.format(-Math.floor(seconds / 60), 'minute');
+  if (seconds < 86400) return rtf.format(-Math.floor(seconds / 3600), 'hour');
+  return rtf.format(-Math.floor(seconds / 86400), 'day');
+}
 
 export interface Activity {
   id: number;
@@ -42,7 +50,7 @@ export function ActivityItem({ activity, showDeal = false }: ActivityItemProps) 
         )}
 
         <p className="text-xs text-gray-400">
-          {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+          {timeAgo(new Date(activity.createdAt))}
         </p>
 
         {metadata && Object.keys(metadata).length > 0 && (

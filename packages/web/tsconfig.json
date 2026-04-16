@@ -3,6 +3,10 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
     "jsx": "preserve",
     "incremental": true,
     "plugins": [
@@ -11,7 +15,9 @@
       }
     ],
     "allowJs": true,
-    "noEmit": true
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler"
   },
   "include": [
     "next-env.d.ts",

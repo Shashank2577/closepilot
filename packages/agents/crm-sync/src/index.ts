@@ -1,4 +1,5 @@
-import type { Deal, DealStage, AgentType, CrmSyncContext } from '@closepilot/core';
+import { DealStage } from '@closepilot/core';
+import type { Deal, AgentType, CrmSyncContext } from '@closepilot/core';
 import { DealStoreTools } from '@closepilot/mcp-client';
 import { HubSpotAdapter } from './hubspot-adapter.js';
 import { SalesforceAdapter } from './salesforce-adapter.js';
@@ -57,7 +58,7 @@ export class CRMSyncAgent {
       await this.dealStoreTools.updateDeal(dealId, {
         crmId: result.crmDealId,
         crmSyncedAt: result.syncedAt,
-        stage: 'completed',
+        stage: DealStage.COMPLETED,
       });
 
       return result;
@@ -66,7 +67,7 @@ export class CRMSyncAgent {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       await this.dealStoreTools.updateDeal(dealId, {
-        stage: 'failed',
+        stage: DealStage.FAILED,
       });
 
       return {
@@ -226,7 +227,7 @@ export class CRMSyncAgent {
    * Query deals pending CRM sync
    */
   async getPendingDeals(): Promise<Deal[]> {
-    return await this.dealStoreTools.queryDealsByStage('crm_sync');
+    return await this.dealStoreTools.queryDealsByStage(DealStage.CRM_SYNC);
   }
 
   /**

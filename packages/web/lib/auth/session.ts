@@ -6,16 +6,12 @@ export interface Session {
   tokenExpiry: number;
 }
 
-/**
- * Get current session information
- */
-export function getSession(): Session | null {
-  const accessToken = getAccessToken();
-  const tokenExpiry = cookies().get('token_expiry')?.value;
+export async function getSession(): Promise<Session | null> {
+  const accessToken = await getAccessToken();
+  const cookieStore = await cookies();
+  const tokenExpiry = cookieStore.get('token_expiry')?.value;
 
-  if (!accessToken || !tokenExpiry) {
-    return null;
-  }
+  if (!accessToken || !tokenExpiry) return null;
 
   return {
     accessToken,
@@ -23,52 +19,27 @@ export function getSession(): Session | null {
   };
 }
 
-/**
- * Check if session is valid (not expired)
- */
-export function isSessionValid(): boolean {
-  const session = getSession();
-  if (!session) {
-    return false;
-  }
-
+export async function isSessionValid(): Promise<boolean> {
+  const session = await getSession();
+  if (!session) return false;
   return Date.now() < session.tokenExpiry;
 }
 
-/**
- * Require authentication - throw error if not authenticated
- */
-export function requireAuth(): Session {
-  const session = getSession();
+export async function requireAuth(): Promise<Session> {
+  const session = await getSession();
+  if (!session) throw new Error('Authentication required');
 
-  if (!session) {
-    throw new Error('Authentication required');
-  }
-
-  if (!isSessionValid()) {
-    clearAuthCookies();
+  if (!(await isSessionValid())) {
+    await clearAuthCookies();
     throw new Error('Session expired');
   }
 
   return session;
 }
 
-/**
- * Refresh token if needed (for server-side use)
- */
 export async function refreshIfNeeded(): Promise<string | null> {
-  const session = getSession();
-
-  if (!session) {
-    return null;
-  }
-
-  // Token is still valid
-  if (isSessionValid()) {
-    return session.accessToken;
-  }
-
-  // Token is expired, need to refresh
-  // This would be called from API routes
+  const session = await getSession();
+  if (!session) return null;
+  if (await isSessionValid()) return session.accessToken;
   return null;
 }

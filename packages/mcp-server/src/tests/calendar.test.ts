@@ -43,6 +43,13 @@ vi.mock('googleapis', () => {
   };
 });
 
+const mockAuthConfig = {
+  accessToken: 'test-token',
+  refreshToken: 'test-refresh',
+  clientId: 'test-client-id',
+  clientSecret: 'test-client-secret',
+};
+
 describe('Calendar Tools', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -72,15 +79,14 @@ describe('Calendar Tools', () => {
         }
       });
 
-      const params = {
+      const result = await createEvent({
         title: 'Test Meeting',
         description: 'Test Description',
-        startTime: '2024-05-02T10:00:00Z',
-        endTime: '2024-05-02T11:00:00Z',
+        startTime: new Date('2024-05-02T10:00:00Z'),
+        endTime: new Date('2024-05-02T11:00:00Z'),
         attendees: ['test@example.com'],
-      };
-
-      const result = await createEvent(params);
+        authConfig: mockAuthConfig,
+      });
 
       expect(insertMock).toHaveBeenCalledTimes(1);
       const callArg = insertMock.mock.calls[0][0];
@@ -94,7 +100,7 @@ describe('Calendar Tools', () => {
 
   describe('getEvent', () => {
     it('gets an existing event', async () => {
-      const result = await getEvent('test-event-1');
+      const result = await getEvent('test-event-1', mockAuthConfig);
       expect(getMock).toHaveBeenCalledWith({
         calendarId: 'primary',
         eventId: 'test-event-1',
@@ -105,7 +111,7 @@ describe('Calendar Tools', () => {
 
     it('returns null on 404', async () => {
       getMock.mockRejectedValueOnce({ code: 404 });
-      const result = await getEvent('missing-event');
+      const result = await getEvent('missing-event', mockAuthConfig);
       expect(result).toBeNull();
     });
   });
@@ -123,8 +129,8 @@ describe('Calendar Tools', () => {
 
       const result = await updateEvent('test-event-1', {
         title: 'Updated Event',
-        endTime: '2024-05-01T12:00:00Z'
-      });
+        endTime: new Date('2024-05-01T12:00:00Z'),
+      }, mockAuthConfig);
 
       expect(getMock).toHaveBeenCalledWith({ calendarId: 'primary', eventId: 'test-event-1' });
       expect(updateMock).toHaveBeenCalledTimes(1);
@@ -139,7 +145,7 @@ describe('Calendar Tools', () => {
     it('deletes an event successfully', async () => {
       deleteMock.mockResolvedValueOnce({});
 
-      await deleteEvent('test-event-1');
+      await deleteEvent('test-event-1', mockAuthConfig);
 
       expect(deleteMock).toHaveBeenCalledWith({
         calendarId: 'primary',
@@ -165,12 +171,16 @@ describe('Calendar Tools', () => {
         windowStart: new Date('2024-05-01T09:00:00Z'),
         windowEnd: new Date('2024-05-01T17:00:00Z'),
         duration: 30
-      });
+      }, mockAuthConfig);
 
       expect(queryMock).toHaveBeenCalledTimes(1);
-      expect(result.length).toBe(1);
-      expect(result[0].attendee).toBe('test@example.com');
-      expect(result[0].busy.length).toBe(1);
+      expect(result.length).toBeGreaterThan(0);
+      // Slots overlapping busy period should have conflicts
+      const busySlot = result.find(s =>
+        s.startTime >= new Date('2024-05-01T10:00:00Z') &&
+        s.startTime < new Date('2024-05-01T11:00:00Z')
+      );
+      expect(busySlot?.allAttendeesAvailable).toBe(false);
     });
   });
 
@@ -185,7 +195,7 @@ describe('Calendar Tools', () => {
         }
       });
 
-      const result = await listUpcomingEvents('2024-05-01T00:00:00Z', undefined, 5);
+      const result = await listUpcomingEvents(new Date('2024-05-01T00:00:00Z'), undefined, 5, mockAuthConfig);
 
       expect(listMock).toHaveBeenCalledTimes(1);
       const callArg = listMock.mock.calls[0][0];
@@ -210,18 +220,11 @@ describe('Calendar Tools', () => {
 
       const suggestions = await findAvailableSlots({
         attendees: ['test@example.com'],
-        windowStart: '2024-05-01T09:00:00Z',
-        windowEnd: '2024-05-01T12:00:00Z',
+        windowStart: new Date('2024-05-01T09:00:00Z'),
+        windowEnd: new Date('2024-05-01T12:00:00Z'),
         duration: 60, // 1 hour
-      });
+      }, mockAuthConfig);
 
-      // 09:00 - 10:00 is free (1 suggestion)
-      // 10:00 - 11:00 is busy
-      // 11:00 - 12:00 is free (1 suggestion)
-      // Plus 09:30 - 10:30 overlaps with busy, skip.
-
-      // Let's verify we get slots outside the busy period.
-      // 09:00, 09:30 (overlaps), 11:00
       expect(suggestions.length).toBeGreaterThan(0);
 
       // First slot should be at 09:00
@@ -257,11 +260,11 @@ describe('Calendar Tools', () => {
         attendees: ['test@example.com'],
         proposedTimes: [
           // This slot is only 30 mins, too short
-          { start: '2024-05-01T09:00:00Z', end: '2024-05-01T09:30:00Z' },
+          { start: new Date('2024-05-01T09:00:00Z'), end: new Date('2024-05-01T09:30:00Z') },
           // This slot is 60 mins, suitable
-          { start: '2024-05-01T11:00:00Z', end: '2024-05-01T12:00:00Z' }
+          { start: new Date('2024-05-01T11:00:00Z'), end: new Date('2024-05-01T12:00:00Z') }
         ]
-      });
+      }, mockAuthConfig);
 
       expect(insertMock).toHaveBeenCalledTimes(1);
       const callArg = insertMock.mock.calls[0][0];
@@ -276,9 +279,9 @@ describe('Calendar Tools', () => {
         duration: 120,
         attendees: ['test@example.com'],
         proposedTimes: [
-          { start: '2024-05-01T09:00:00Z', end: '2024-05-01T10:00:00Z' }
+          { start: new Date('2024-05-01T09:00:00Z'), end: new Date('2024-05-01T10:00:00Z') }
         ]
-      })).rejects.toThrow('No suitable time slot found');
+      }, mockAuthConfig)).rejects.toThrow('No suitable time slot found');
     });
   });
 });

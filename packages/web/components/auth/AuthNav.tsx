@@ -37,7 +37,7 @@ export function AuthNav() {
     return (
       <>
         <TokenRefresher />
-        <UserMenu user={user} />
+        <UserMenu userEmail={user?.email} />
       </>
     );
   }
