@@ -1,0 +1,29 @@
+{
+  "name": "@closepilot/agents-ingestion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ingestion Agent - Monitors Gmail and creates deals from lead inquiries",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "echo 'Tests not configured yet'",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@closepilot/mcp-client": "workspace:*",
+    "@anthropic-ai/sdk": "^0.30.0",
+    "cron": "^3.1.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,37 +1,53 @@
 'use client';
 
-import { Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
   placeholder?: string;
-  initialValue?: string;
 }
 
-export function SearchBar({ onSearch, placeholder = 'Search deals...', initialValue = '' }: SearchBarProps) {
-  const [value, setValue] = useState(initialValue);
+export function SearchBar({
+  onSearch,
+  placeholder = 'Search deals...',
+}: SearchBarProps) {
+  const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onSearch(value);
-    }, 300);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch(query);
+  };
 
-    return () => clearTimeout(timer);
-  }, [value, onSearch]);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+    if (value === '') {
+      onSearch('');
+    }
+  };
 
   return (
-    <div className="relative w-full max-w-sm">
-      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <Search className="h-4 w-4 text-gray-400" />
-      </div>
+    <form onSubmit={handleSubmit} className="relative">
       <input
         type="text"
-        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        value={query}
+        onChange={handleChange}
         placeholder={placeholder}
-        value={value}
-        onChange={(e) => setValue((e.target as any).value)}
+        className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
-    </div>
+      <svg
+        className="absolute left-3 top-2.5 w-5 h-5 text-gray-400"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+    </form>
   );
 }

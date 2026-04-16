@@ -1,66 +1,90 @@
 'use client';
 
-import { SearchBar } from './SearchBar';
-
-export interface Filters {
-  search: string;
-  assignee: string;
-  stage: string;
-}
+import React from 'react';
+import { DealStage } from '@closepilot/core';
+import { Button } from '../ui/button';
 
 interface FilterBarProps {
-  filters: Filters;
-  onFilterChange: (filters: Filters) => void;
-  assignees?: string[];
-  stages?: { value: string; label: string }[];
+  selectedStage: DealStage | 'all';
+  onStageChange: (stage: DealStage | 'all') => void;
+  dateFilter?: 'week' | 'month' | 'all';
+  onDateFilterChange?: (filter: 'week' | 'month' | 'all') => void;
 }
 
-export function FilterBar({ filters, onFilterChange, assignees = [], stages = [] }: FilterBarProps) {
-  const handleSearchChange = (search: string) => {
-    onFilterChange({ ...filters, search });
-  };
+export function FilterBar({
+  selectedStage,
+  onStageChange,
+  dateFilter = 'all',
+  onDateFilterChange,
+}: FilterBarProps) {
+  const stages: (DealStage | 'all')[] = [
+    'all',
+    DealStage.INGESTION,
+    DealStage.ENRICHMENT,
+    DealStage.SCOPING,
+    DealStage.PROPOSAL,
+    DealStage.CRM_SYNC,
+    DealStage.COMPLETED,
+    DealStage.FAILED,
+  ];
 
-  const handleAssigneeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onFilterChange({ ...filters, assignee: (e.target as any).value });
-  };
-
-  const handleStageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onFilterChange({ ...filters, stage: (e.target as any).value });
+  const stageLabels: Record<DealStage | 'all', string> = {
+    all: 'All Stages',
+    [DealStage.INGESTION]: 'Ingestion',
+    [DealStage.ENRICHMENT]: 'Enrichment',
+    [DealStage.SCOPING]: 'Scoping',
+    [DealStage.PROPOSAL]: 'Proposal',
+    [DealStage.CRM_SYNC]: 'CRM Sync',
+    [DealStage.COMPLETED]: 'Completed',
+    [DealStage.FAILED]: 'Failed',
   };
 
   return (
-    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
-      <div className="flex-1">
-        <SearchBar onSearch={handleSearchChange} initialValue={filters.search} />
-      </div>
-
-      <div className="flex space-x-4">
-        <select
-          className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-          value={filters.assignee}
-          onChange={handleAssigneeChange}
-        >
-          <option value="">All Assignees</option>
-          {assignees.map((assignee) => (
-            <option key={assignee} value={assignee}>
-              {assignee}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-          value={filters.stage}
-          onChange={handleStageChange}
-        >
-          <option value="">All Stages</option>
+    <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium text-gray-700">Stage:</label>
+        <div className="flex flex-wrap gap-2">
           {stages.map((stage) => (
-            <option key={stage.value} value={stage.value}>
-              {stage.label}
-            </option>
+            <Button
+              key={stage}
+              variant={selectedStage === stage ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => onStageChange(stage)}
+            >
+              {stageLabels[stage]}
+            </Button>
           ))}
-        </select>
+        </div>
       </div>
+
+      {onDateFilterChange && (
+        <div className="flex items-center gap-2 ml-4">
+          <label className="text-sm font-medium text-gray-700">Date:</label>
+          <div className="flex gap-2">
+            <Button
+              variant={dateFilter === 'week' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => onDateFilterChange('week')}
+            >
+              This Week
+            </Button>
+            <Button
+              variant={dateFilter === 'month' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => onDateFilterChange('month')}
+            >
+              This Month
+            </Button>
+            <Button
+              variant={dateFilter === 'all' ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => onDateFilterChange('all')}
+            >
+              All Time
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
