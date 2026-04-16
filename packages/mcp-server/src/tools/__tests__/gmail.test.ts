@@ -1,11 +1,9 @@
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { searchEmails, getThread, extractEmailContext } from '../gmail';
-import { google } from 'googleapis';
-import Anthropic from '@anthropic-ai/sdk';
-import { simpleParser } from 'mailparser';
 
 // Mock simpleParser
-jest.mock('mailparser', () => ({
-  simpleParser: jest.fn().mockResolvedValue({
+vi.mock('mailparser', () => ({
+  simpleParser: vi.fn().mockResolvedValue({
     headers: {
       get: (key: string) => {
         if (key === 'from') return 'test@example.com';
@@ -22,10 +20,11 @@ jest.mock('mailparser', () => ({
 }));
 
 // Mock Anthropic
-jest.mock('@anthropic-ai/sdk', () => {
-  return jest.fn().mockImplementation(() => ({
-    messages: {
-      create: jest.fn().mockResolvedValue({
+vi.mock('@anthropic-ai/sdk', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const MockAnthropic = vi.fn(function(this: any) {
+    this.messages = {
+      create: vi.fn().mockResolvedValue({
         content: [
           {
             type: 'text',
@@ -33,19 +32,20 @@ jest.mock('@anthropic-ai/sdk', () => {
           }
         ]
       })
-    }
-  }));
+    };
+  });
+  return { default: MockAnthropic };
 });
 
 // Mock Google APIs
-jest.mock('googleapis', () => {
+vi.mock('googleapis', () => {
   const mGmail = {
     users: {
       messages: {
-        list: jest.fn().mockResolvedValue({
+        list: vi.fn().mockResolvedValue({
           data: { messages: [{ id: 'msg1' }], nextPageToken: 'token123' }
         }),
-        get: jest.fn().mockResolvedValue({
+        get: vi.fn().mockResolvedValue({
           data: {
             id: 'msg1',
             threadId: 'thread1',
@@ -55,10 +55,10 @@ jest.mock('googleapis', () => {
         })
       },
       threads: {
-        list: jest.fn().mockResolvedValue({
+        list: vi.fn().mockResolvedValue({
           data: { threads: [{ id: 'thread1' }], nextPageToken: 'token456' }
         }),
-        get: jest.fn().mockResolvedValue({
+        get: vi.fn().mockResolvedValue({
           data: {
             id: 'thread1',
             messages: [{ id: 'msg1', labelIds: ['INBOX'] }]
@@ -71,18 +71,17 @@ jest.mock('googleapis', () => {
   return {
     google: {
       auth: {
-        OAuth2: jest.fn().mockImplementation(() => ({
-          setCredentials: jest.fn()
-        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        OAuth2: vi.fn(function(this: any) { this.setCredentials = vi.fn(); })
       },
-      gmail: jest.fn().mockReturnValue(mGmail)
+      gmail: vi.fn().mockReturnValue(mGmail)
     }
   };
 });
 
 describe('Gmail Tools', () => {
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('searchEmails', () => {
