@@ -1,0 +1,23 @@
+{
+  "name": "@closepilot/orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Orchestrator agent for managing deal lifecycle and agent coordination",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "echo 'Tests not configured yet'"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@closepilot/mcp-client": "workspace:*",
+    "@anthropic-ai/sdk": "^0.32.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
