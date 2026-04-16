@@ -8,7 +8,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { dealStoreToolDefinitions, handleDealStoreToolCall, registerDealStoreTools } from './tools/deal-store.js';
-import { registerGmailTools } from './tools/gmail.js';
+import { registerGmailTools, gmailToolHandlers } from './tools/gmail.js';
 import { registerCalendarTools } from './tools/calendar.js';
 import { registerDriveTools } from './tools/drive.js';
 
@@ -258,6 +258,69 @@ async function main() {
           description: 'Get document download URL',
           inputSchema: { type: 'object', properties: { documentId: { type: 'string' } }, required: ['documentId'] },
         },
+        // Gmail tools
+        {
+          name: 'search_emails',
+          description: 'Search emails in Gmail',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              query: { type: 'string' },
+              from: { type: 'string' },
+              to: { type: 'string' },
+              subject: { type: 'string' },
+              hasAttachment: { type: 'boolean' },
+              label: { type: 'string' },
+              after: { type: 'string' },
+              before: { type: 'string' },
+            },
+          },
+        },
+        {
+          name: 'get_thread',
+          description: 'Get an email thread by ID',
+          inputSchema: { type: 'object', properties: { threadId: { type: 'string' } }, required: ['threadId'] },
+        },
+        {
+          name: 'get_message',
+          description: 'Get an email message by ID',
+          inputSchema: { type: 'object', properties: { messageId: { type: 'string' } }, required: ['messageId'] },
+        },
+        {
+          name: 'send_email',
+          description: 'Send an email',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              to: { type: 'array', items: { type: 'string' } },
+              subject: { type: 'string' },
+              body: { type: 'string' },
+              cc: { type: 'array', items: { type: 'string' } },
+              threadId: { type: 'string' },
+            },
+            required: ['to', 'subject', 'body'],
+          },
+        },
+        {
+          name: 'extract_email_context',
+          description: 'Extract context from an email using AI',
+          inputSchema: { type: 'object', properties: { messageId: { type: 'string' } }, required: ['messageId'] },
+        },
+        {
+          name: 'get_recent_threads',
+          description: 'Get recent email threads',
+          inputSchema: { type: 'object', properties: { limit: { type: 'number' }, pageToken: { type: 'string' } } },
+        },
+        {
+          name: 'watch_emails',
+          description: 'Watch emails (push notifications)',
+          inputSchema: { type: 'object', properties: { topic: { type: 'string' } }, required: ['topic'] },
+        },
+        {
+          name: 'stop_watching',
+          description: 'Stop watching emails',
+          inputSchema: { type: 'object', properties: {} },
+        },
       ],
     };
   });
@@ -430,23 +493,31 @@ async function main() {
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       }
 
+
+      // Gmail tools
+      if (gmailToolHandlers[name]) {
+        const parsedArgs = { ...args };
+        if (parsedArgs && typeof parsedArgs === 'object') {
+          if ('after' in parsedArgs && typeof parsedArgs.after === 'string') {
+            (parsedArgs as any).after = new Date(parsedArgs.after as string);
+          }
+          if ('before' in parsedArgs && typeof parsedArgs.before === 'string') {
+            (parsedArgs as any).before = new Date(parsedArgs.before as string);
+          }
+        }
+        const result = await gmailToolHandlers[name](parsedArgs);
+        return {
+          content: [{ type: 'text', text: typeof result === 'object' ? JSON.stringify(result) : String(result) }],
+        };
+      }
+
       return {
-        content: [
-          {
-            type: 'text',
-            text: `Unknown tool: ${name}`,
-          },
-        ],
+        content: [{ type: 'text', text: `Unknown tool: ${name}` }],
         isError: true,
       };
     } catch (error: any) {
       return {
-        content: [
-          {
-            type: 'text',
-            text: `Error executing tool ${name}: ${error.message}`,
-          },
-        ],
+        content: [{ type: 'text', text: `Error executing tool ${name}: ${error.message}` }],
         isError: true,
       };
     }

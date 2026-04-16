@@ -58,6 +58,7 @@ export interface GmailQuery {
   label?: string;
   after?: Date;
   before?: Date;
+  pageToken?: string;
 }
 
 /**

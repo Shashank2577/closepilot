@@ -16,7 +16,7 @@ export class GmailTools {
   /**
    * Search emails
    */
-  async searchEmails(query: GmailQuery): Promise<EmailMessage[]> {
+  async searchEmails(query: GmailQuery): Promise<{ messages: EmailMessage[], nextPageToken?: string }> {
     const response = await this.client.callTool('search_emails', {
       query: query.query || '',
       from: query.from,
@@ -26,8 +26,18 @@ export class GmailTools {
       label: query.label,
       after: query.after?.toISOString(),
       before: query.before?.toISOString(),
+      pageToken: query.pageToken,
     });
-    return response.content as EmailMessage[];
+    // The server returns JSON text in response.content[0].text
+    if (response.content && response.content.length > 0 && response.content[0].type === 'text') {
+      try {
+        return JSON.parse(response.content[0].text) as { messages: EmailMessage[], nextPageToken?: string };
+      } catch (e) {
+        return { messages: [] };
+      }
+    }
+    // Fallback for simple content array or empty
+    return { messages: response.content as any };
   }
 
   /**
@@ -35,7 +45,14 @@ export class GmailTools {
    */
   async getThread(threadId: string): Promise<Thread | null> {
     const response = await this.client.callTool('get_thread', { threadId });
-    return response.content as Thread | null;
+    if (response.content && response.content.length > 0 && response.content[0].type === 'text') {
+      try {
+        return JSON.parse(response.content[0].text) as Thread | null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return response.content as any;
   }
 
   /**
@@ -43,7 +60,14 @@ export class GmailTools {
    */
   async getMessage(messageId: string): Promise<EmailMessage | null> {
     const response = await this.client.callTool('get_message', { messageId });
-    return response.content as EmailMessage | null;
+    if (response.content && response.content.length > 0 && response.content[0].type === 'text') {
+      try {
+        return JSON.parse(response.content[0].text) as EmailMessage | null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return response.content as any;
   }
 
   /**
@@ -57,7 +81,10 @@ export class GmailTools {
     threadId?: string;
   }): Promise<EmailMessage> {
     const response = await this.client.callTool('send_email', params);
-    return response.content as EmailMessage;
+    if (response.content && response.content.length > 0 && response.content[0].type === 'text') {
+      return JSON.parse(response.content[0].text) as EmailMessage;
+    }
+    return response.content as any;
   }
 
   /**
@@ -67,15 +94,25 @@ export class GmailTools {
     const response = await this.client.callTool('extract_email_context', {
       messageId,
     });
-    return response.content as EmailContext;
+    if (response.content && response.content.length > 0 && response.content[0].type === 'text') {
+      return JSON.parse(response.content[0].text) as EmailContext;
+    }
+    return response.content as any;
   }
 
   /**
    * Get recent threads from inbox
    */
-  async getRecentThreads(limit = 20): Promise<Thread[]> {
-    const response = await this.client.callTool('get_recent_threads', { limit });
-    return response.content as Thread[];
+  async getRecentThreads(limit = 20, pageToken?: string): Promise<{ threads: Thread[], nextPageToken?: string }> {
+    const response = await this.client.callTool('get_recent_threads', { limit, pageToken });
+    if (response.content && response.content.length > 0 && response.content[0].type === 'text') {
+      try {
+        return JSON.parse(response.content[0].text) as { threads: Thread[], nextPageToken?: string };
+      } catch (e) {
+        return { threads: [] };
+      }
+    }
+    return { threads: response.content as any };
   }
 
   /**
@@ -83,7 +120,10 @@ export class GmailTools {
    */
   async watchEmails(topic: string): Promise<string> {
     const response = await this.client.callTool('watch_emails', { topic });
-    return response.content as string; // Returns history ID
+    if (response.content && response.content.length > 0 && response.content[0].type === 'text') {
+      return JSON.parse(response.content[0].text);
+    }
+    return response.content as any;
   }
 
   /**
