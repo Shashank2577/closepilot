@@ -1,101 +1,113 @@
-import { Requirement } from '@closepilot/core';
+/**
+ * Requirement Extractor
+ *
+ * Extracts and categorizes requirements from email content using Claude
+ */
+
+import { Anthropic } from '@anthropic-ai/sdk';
+import type { Requirement } from '@closepilot/core';
+
+export interface ExtractionResult {
+  requirements: Requirement[];
+  confidence: number;
+}
 
 /**
- * Extracts requirements from an email thread.
- * In a real implementation, this would use an LLM (e.g. Claude) to parse the thread.
- * For this implementation, we use a heuristic/mock approach based on keywords.
+ * Extracts requirements from email text
  */
-export async function extractRequirements(emailThread: string[]): Promise<Requirement[]> {
-  const requirements: Requirement[] = [];
-  const fullText = emailThread.join('\n').toLowerCase();
+export class RequirementExtractor {
+  constructor(private anthropic: Anthropic) {}
 
-  const generateId = () => Math.random().toString(36).substring(2, 9);
+  /**
+   * Extract requirements from email content
+   */
+  async extract(emailContent: string): Promise<Requirement[]> {
+    const prompt = this.buildPrompt(emailContent);
 
-  // Functional requirements heuristics
-  if (fullText.includes('login') || fullText.includes('auth')) {
-    requirements.push({
-      id: generateId(),
-      category: 'functional',
-      description: 'User authentication and authorization system',
-      priority: 'high',
-      status: 'identified',
+    const response = await this.anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 2000,
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
     });
+
+    const extractedText = response.content[0];
+    if (extractedText.type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
+    }
+
+    return this.parseRequirements(extractedText.text);
   }
 
-  if (fullText.includes('dashboard') || fullText.includes('admin')) {
-    requirements.push({
-      id: generateId(),
-      category: 'functional',
-      description: 'Admin dashboard for management',
-      priority: 'medium',
-      status: 'identified',
-    });
+  /**
+   * Build the extraction prompt
+   */
+  private buildPrompt(emailContent: string): string {
+    return `You are a requirements analyst for a B2B service company. Extract all requirements from the following email thread.
+
+Categorize requirements into these types:
+- functional: What features/functionality the client wants
+- technical: Technical requirements, platforms, technologies, integrations
+- timeline: Deadlines, start dates, duration expectations
+- budget: Budget constraints, pricing expectations
+- design: UI/UX, branding, visual requirements
+- legal: Contracts, compliance, security requirements
+- other: Any other requirements
+
+For each requirement, assign priority:
+- high: Critical, must-have
+- medium: Important, should-have
+- low: Nice-to-have
+
+Email Thread:
+${emailContent}
+
+Return requirements in this JSON format:
+{
+  "requirements": [
+    {
+      "category": "functional|technical|timeline|budget|design|legal|other",
+      "description": "Clear description of the requirement",
+      "priority": "high|medium|low"
+    }
+  ]
+}
+
+Return ONLY valid JSON, no other text.`;
   }
 
-  // Technical requirements heuristics
-  if (fullText.includes('api') || fullText.includes('integration')) {
-    requirements.push({
-      id: generateId(),
-      category: 'technical',
-      description: 'Third-party API integration',
-      priority: 'high',
-      status: 'identified',
-    });
-  }
+  /**
+   * Parse requirements from Claude response
+   */
+  private parseRequirements(responseText: string): Requirement[] {
+    try {
+      // Extract JSON from response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
 
-  if (fullText.includes('mobile') || fullText.includes('ios') || fullText.includes('android')) {
-    requirements.push({
-      id: generateId(),
-      category: 'technical',
-      description: 'Mobile responsive or native mobile application',
-      priority: 'high',
-      status: 'identified',
-    });
-  }
+      const parsed = JSON.parse(jsonMatch[0]);
 
-  // Timeline requirements
-  if (fullText.includes('q1') || fullText.includes('january') || fullText.includes('urgent')) {
-    requirements.push({
-      id: generateId(),
-      category: 'timeline',
-      description: 'Urgent delivery required (Q1)',
-      priority: 'high',
-      status: 'identified',
-    });
-  } else if (fullText.includes('timeline') || fullText.includes('deadline')) {
-    requirements.push({
-      id: generateId(),
-      category: 'timeline',
-      description: 'Specific timeline required',
-      priority: 'medium',
-      status: 'identified',
-      clarification: 'What is the exact deadline?'
-    });
-  }
+      if (!parsed.requirements || !Array.isArray(parsed.requirements)) {
+        throw new Error('Invalid requirements format');
+      }
 
-  // Budget requirements
-  if (fullText.includes('budget') || fullText.includes('$')) {
-    requirements.push({
-      id: generateId(),
-      category: 'budget',
-      description: 'Budget constraints mentioned',
-      priority: 'high',
-      status: 'identified',
-      clarification: fullText.includes('$') ? undefined : 'What is the exact budget range?'
-    });
+      return parsed.requirements.map((req: any, index: number) => ({
+        id: `req-${Date.now()}-${index}`,
+        category: req.category,
+        description: req.description,
+        priority: req.priority,
+        status: 'identified' as const,
+      }));
+    } catch (error) {
+      console.error('Failed to parse requirements:', error);
+      // Return empty array on parse error
+      return [];
+    }
   }
-
-  // If no specific requirements are found, add a generic one
-  if (requirements.length === 0) {
-    requirements.push({
-      id: generateId(),
-      category: 'functional',
-      description: 'General system functionality',
-      priority: 'medium',
-      status: 'identified',
-      clarification: 'Need more specific functional requirements.'
-    });
-  }
-
-  return requirements;
 }

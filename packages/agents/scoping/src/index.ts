@@ -1,94 +1,238 @@
-import { AgentInput, AgentOutput, DealStage, AgentType } from '@closepilot/core';
-import { extractRequirements } from './requirement-extractor';
-import { defineScope } from './scope-definer';
-import { calculateComplexity } from './complexity-analyzer';
-import { generateClarificationEmail } from './clarification-generator';
+/**
+ * Scoping Agent - Main Orchestrator
+ *
+ * Analyzes email threads for project requirements and defines project scope
+ */
 
-export interface ScopingOutput {
-  needsClarification: boolean;
-  clarificationEmailDraft?: string;
-  complexityScore?: number;
+import { Anthropic } from '@anthropic-ai/sdk';
+import type { Deal, DealStage, Requirement, ProjectScope } from '@closepilot/core';
+import { DealStoreClient } from '@closepilot/mcp-client';
+import { RequirementExtractor } from './requirement-extractor.js';
+import { ScopeDefiner } from './scope-definer.js';
+import { ComplexityAnalyzer } from './complexity-analyzer.js';
+import { ClarificationGenerator } from './clarification-generator.js';
+
+export interface ScopingAgentConfig {
+  anthropicApiKey: string;
+  mcpServerUrl?: string;
 }
 
-export interface ScopingContext {
-  emailThreadContent?: string[];
+export interface ScopingResult {
+  success: boolean;
+  deal: Deal;
+  clarificationsSent?: boolean;
+  errors?: string[];
 }
 
 /**
- * Orchestrates the Scoping Agent's responsibilities:
- * 1. Analyze email threads and extract requirements.
- * 2. Define the project scope based on requirements.
- * 3. Calculate complexity score.
- * 4. Generate clarification email if needed.
- * 5. Update the deal with scope/requirements.
+ * Main Scoping Agent class
+ *
+ * Responsibilities:
+ * 1. Receive deal in 'scoping' stage
+ * 2. Analyze email threads for project requirements
+ * 3. Extract and categorize requirements
+ * 4. Define project scope with timeline, budget, complexity
+ * 5. Identify assumptions and risks
+ * 6. Calculate complexity score
+ * 7. Generate clarification email if info missing
+ * 8. Update deal with projectScope and requirements
+ * 9. Set stage to 'proposal' when complete
  */
-export async function processDeal(input: AgentInput<ScopingContext>): Promise<AgentOutput<ScopingOutput>> {
-  try {
-    const deal = input.deal;
-    const context = input.context || {};
+export class ScopingAgent {
+  private anthropic: Anthropic;
+  private mcpClient: DealStoreClient;
+  private requirementExtractor: RequirementExtractor;
+  private scopeDefiner: ScopeDefiner;
+  private complexityAnalyzer: ComplexityAnalyzer;
+  private clarificationGenerator: ClarificationGenerator;
 
-    // Use thread content from context if provided (e.g., for testing), otherwise fallback to deal metadata
-    let emailThreadContent = context.emailThreadContent || [
-      deal.leadName,
-      deal.leadEmail,
-      deal.leadCompany,
-      deal.id
-    ].filter(Boolean) as string[];
-
-    const requirements = await extractRequirements(emailThreadContent);
-    const initialScope = await defineScope(requirements, {
-      complexity: 'medium',
-      title: `${deal.leadCompany || deal.leadName} Project`,
-      description: `Custom software project for ${deal.leadName}.`,
+  constructor(config: ScopingAgentConfig) {
+    this.anthropic = new Anthropic({
+      apiKey: config.anthropicApiKey,
     });
 
-    const { score, scope: finalScope } = await calculateComplexity(requirements, initialScope);
+    this.mcpClient = new DealStoreClient(config.mcpServerUrl || 'node packages/mcp-server/dist/index.js');
 
-    const clarificationResult = await generateClarificationEmail(requirements, deal.leadName);
+    this.requirementExtractor = new RequirementExtractor(this.anthropic);
+    this.scopeDefiner = new ScopeDefiner(this.anthropic);
+    this.complexityAnalyzer = new ComplexityAnalyzer();
+    this.clarificationGenerator = new ClarificationGenerator(this.anthropic);
+  }
 
-    // If clarification is needed, we don't move to PROPOSAL yet, or we require human approval
-    const requiresApproval = clarificationResult.needsClarification;
-    const approvalReason = clarificationResult.needsClarification
-      ? 'Clarification needed from the prospect regarding ambiguous requirements.'
-      : undefined;
-
-    // Update deal
-    deal.requirements = requirements;
-    deal.projectScope = finalScope;
-
-    const output: AgentOutput<ScopingOutput> = {
-      dealId: deal.id,
-      success: true,
-      data: {
-        needsClarification: clarificationResult.needsClarification,
-        clarificationEmailDraft: clarificationResult.emailDraft,
-        complexityScore: score,
-      },
-      nextStage: clarificationResult.needsClarification ? DealStage.SCOPING : DealStage.PROPOSAL,
-      requiresApproval,
-      approvalReason,
-      metadata: {
-        agentType: AgentType.SCOPING,
-        executionId: Math.random().toString(36).substring(2, 9),
-        startedAt: new Date(),
-        completedAt: new Date(),
+  /**
+   * Process a deal through scoping
+   */
+  async processDeal(dealId: string): Promise<ScopingResult> {
+    try {
+      // Step 1: Fetch the deal
+      const deal = await this.mcpClient.callTool('get_deal', { dealId });
+      if (!deal || !deal.content) {
+        throw new Error(`Deal ${dealId} not found`);
       }
-    };
 
-    return output;
-  } catch (error: any) {
-    return {
-      dealId: input.deal.id,
-      success: false,
-      errors: [error.message],
-      requiresApproval: true,
-      approvalReason: 'Error during scoping agent execution',
-      metadata: {
-        agentType: AgentType.SCOPING,
-        executionId: Math.random().toString(36).substring(2, 9),
-        startedAt: new Date(),
-        completedAt: new Date(),
+      const dealData = deal.content as Deal;
+
+      // Step 2: Verify deal is in scoping stage
+      if (dealData.stage !== 'scoping') {
+        throw new Error(
+          `Deal ${dealId} is in ${dealData.stage} stage, expected 'scoping'`
+        );
       }
-    };
+
+      // Step 3: Fetch email thread for analysis
+      const threadId = dealData.threadId;
+      if (!threadId) {
+        throw new Error(`Deal ${dealId} has no associated email thread`);
+      }
+
+      const thread = await this.mcpClient.callTool('get_thread', { threadId });
+      if (!thread || !thread.content) {
+        throw new Error(`Thread ${threadId} not found`);
+      }
+
+      const emailContent = this.extractEmailText(thread.content);
+
+      // Step 4: Extract requirements
+      const requirements = await this.requirementExtractor.extract(emailContent);
+
+      // Step 5: Analyze if we need clarifications
+      const missingInfo = this.identifyMissingInfo(requirements);
+      let clarificationsSent = false;
+
+      if (missingInfo.length > 0) {
+        // Generate and send clarification email
+        const clarificationEmail =
+          await this.clarificationGenerator.generate(dealData, missingInfo);
+
+        await this.mcpClient.callTool('send_email', {
+          to: [dealData.leadEmail],
+          subject: clarificationEmail.subject,
+          body: clarificationEmail.body,
+          threadId: threadId,
+        });
+
+        clarificationsSent = true;
+
+        // Update deal with partial requirements
+        await this.mcpClient.callTool('update_deal', {
+          dealId,
+          updates: {
+            requirements: requirements.map((r) => ({
+              ...r,
+              status: missingInfo.includes(r.category) ? 'identified' : 'confirmed',
+            })),
+          },
+        });
+
+        return {
+          success: true,
+          deal: dealData,
+          clarificationsSent,
+        };
+      }
+
+      // Step 6: Define project scope
+      const scope = await this.scopeDefiner.define(requirements, emailContent);
+
+      // Step 7: Calculate complexity score
+      const complexity = this.complexityAnalyzer.calculate(requirements, scope);
+
+      // Step 8: Update deal with complete scope
+      const updatedDeal = await this.mcpClient.callTool('update_deal', {
+        dealId,
+        updates: {
+          requirements: requirements.map((r) => ({
+            ...r,
+            status: 'confirmed' as const,
+          })),
+          projectScope: {
+            ...scope,
+            complexity: complexity,
+          },
+          stage: 'proposal' as DealStage,
+        },
+      });
+
+      return {
+        success: true,
+        deal: updatedDeal.content as Deal,
+        clarificationsSent: false,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        deal: {} as Deal,
+        errors: [error instanceof Error ? error.message : 'Unknown error'],
+      };
+    }
+  }
+
+  /**
+   * Process all deals in scoping stage
+   */
+  async processPendingDeals(): Promise<ScopingResult[]> {
+    const response = await this.mcpClient.callTool('query_deals_by_stage', {
+      stage: 'scoping',
+    });
+
+    const deals = response.content as Deal[];
+    const results: ScopingResult[] = [];
+
+    for (const deal of deals) {
+      const result = await this.processDeal(deal.id);
+      results.push(result);
+    }
+
+    return results;
+  }
+
+  /**
+   * Extract plain text from email thread
+   */
+  private extractEmailText(thread: any): string {
+    if (typeof thread === 'string') return thread;
+
+    if (thread.messages && Array.isArray(thread.messages)) {
+      return thread.messages
+        .map((msg: any) => {
+          if (typeof msg === 'string') return msg;
+          return msg.body || msg.content || msg.text || '';
+        })
+        .join('\n\n');
+    }
+
+    return thread.body || thread.content || thread.text || '';
+  }
+
+  /**
+   * Identify missing information that requires clarification
+   */
+  private identifyMissingInfo(requirements: Requirement[]): string[] {
+    const missing: string[] = [];
+
+    // Check for timeline requirements
+    const timelineReqs = requirements.filter((r) => r.category === 'timeline');
+    if (timelineReqs.length === 0 || timelineReqs.every((r) => r.priority === 'low')) {
+      missing.push('timeline');
+    }
+
+    // Check for budget requirements
+    const budgetReqs = requirements.filter((r) => r.category === 'budget');
+    if (budgetReqs.length === 0) {
+      missing.push('budget');
+    }
+
+    // Check for technical requirements ambiguity
+    const techReqs = requirements.filter((r) => r.category === 'technical');
+    if (techReqs.some((r) => r.description.length < 50)) {
+      missing.push('technical_details');
+    }
+
+    return missing;
   }
 }
+
+export * from './requirement-extractor.js';
+export * from './scope-definer.js';
+export * from './complexity-analyzer.js';
+export * from './clarification-generator.js';
