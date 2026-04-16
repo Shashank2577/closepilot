@@ -1,0 +1,16 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node", "jest"],
+    "composite": true,
+    "paths": {
+      "@closepilot/core": ["../../core/src/index.ts"]
+    }
+  },
+  "references": [
+    { "path": "../../core" }
+  ],
+  "include": ["src/**/*", "tests/**/*"]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@closepilot/crm-sync",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@hubspot/api-client": "^10.0.0",
+    "jsforce": "^3.3.0",
+    "pipedrive": "^22.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/jest": "^29.5.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0"
+  }
+}
