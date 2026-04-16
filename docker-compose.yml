@@ -1,4 +1,6 @@
 services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
   postgres:
     image: public.ecr.aws/docker/library/postgres:16-alpine
     container_name: closepilot-postgres
@@ -16,6 +18,42 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # ── REST API ───────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: closepilot-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://closepilot:closepilot_dev@postgres:5432/closepilot
+      API_PORT: 3001
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Next.js web UI ─────────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+    container_name: closepilot-web
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+    depends_on:
+      - api
 
 volumes:
   postgres_data:
