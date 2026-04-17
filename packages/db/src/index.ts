@@ -6,3 +6,4 @@ export * from './schema';
 
 // Query stubs
 export * from './queries';
+export * from './instrument.js';

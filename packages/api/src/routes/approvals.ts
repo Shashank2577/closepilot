@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { approvalsResolvedCounter } from '../metrics.js';
 import {
   getPendingApprovalRecords,
   getApprovalsByDeal,
@@ -18,7 +19,7 @@ approvalsRoutes.get('/pending', async (c) => {
     const approvals = await getPendingApprovalRecords();
     return c.json(approvals);
   } catch (error) {
-    console.error('Failed to get pending approvals:', error);
+    (c.get as any)('logger')?.error('Failed to get pending approvals:', { error: (error as Error).message || error });
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
@@ -34,7 +35,7 @@ approvalsRoutes.get('/deal/:dealId', async (c) => {
     const approvals = await getApprovalsByDeal(dealId);
     return c.json(approvals);
   } catch (error) {
-    console.error(`Failed to get approvals for deal ${dealId}:`, error);
+    (c.get as any)('logger')?.error(`Failed to get approvals for deal ${dealId}:`, { error: (error as Error).message || error });
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
@@ -64,7 +65,7 @@ approvalsRoutes.post('/', async (c) => {
 
     return c.json(newApproval, 201);
   } catch (error) {
-    console.error('Failed to create approval:', error);
+    (c.get as any)('logger')?.error('Failed to create approval:', { error: (error as Error).message || error });
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
@@ -85,13 +86,14 @@ approvalsRoutes.post('/:id/approve', async (c) => {
       status: 'approved',
       responseComment: approverComment
     });
+    approvalsResolvedCounter.inc({ decision: 'approved' });
 
     // TODO: If this was the last pending approval for the deal, unblock deal stage transition
     // TODO: Send email notification to requester
 
     return c.json(updated);
   } catch (error) {
-    console.error(`Failed to approve ${id}:`, error);
+    (c.get as any)('logger')?.error(`Failed to approve ${id}:`, { error: (error as Error).message || error });
     return c.json({ error: 'Internal server error' }, 500);
   }
 });
@@ -116,13 +118,14 @@ approvalsRoutes.post('/:id/reject', async (c) => {
       status: 'rejected',
       responseComment: reason
     });
+    approvalsResolvedCounter.inc({ decision: 'rejected' });
 
     // TODO: Update deal status or unblock (as rejected)
     // TODO: Send email notification to requester
 
     return c.json(updated);
   } catch (error) {
-    console.error(`Failed to reject ${id}:`, error);
+    (c.get as any)('logger')?.error(`Failed to reject ${id}:`, { error: (error as Error).message || error });
     return c.json({ error: 'Internal server error' }, 500);
   }
 });

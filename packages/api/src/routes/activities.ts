@@ -100,7 +100,7 @@ activitiesRoutes.post('/', async (c) => {
 
     return c.json(activity, 201);
   } catch (error) {
-    console.error('Error creating activity:', error);
+    (c.get as any)('logger')?.error('Error creating activity:', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to create activity' }, 500);
   }
 });

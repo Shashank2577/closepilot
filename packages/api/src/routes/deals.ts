@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { DealStage } from '@closepilot/core';
 import type { Deal, DealInput } from '@closepilot/core';
 import { z } from 'zod';
+import { dealsCreatedCounter } from '../metrics.js';
 import {
   getDeals,
   getDealStats,
@@ -58,6 +59,7 @@ dealsRoutes.get('/', async (c) => {
     const deals = await getDeals(filters, pagination, sorting);
     return c.json(deals);
   } catch (error) {
+    (c.get as any)('logger')?.error('Failed to fetch deals', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to fetch deals' }, 500);
   }
 });
@@ -68,6 +70,7 @@ dealsRoutes.get('/stats', async (c) => {
     const stats = await getDealStats();
     return c.json(stats);
   } catch (error) {
+    (c.get as any)('logger')?.error('Failed to fetch deal stats', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to fetch deal stats' }, 500);
   }
 });
@@ -84,6 +87,7 @@ dealsRoutes.get('/search/similar', async (c) => {
     const deals = await searchSimilarDeals(query, limit);
     return c.json(deals);
   } catch (error) {
+    (c.get as any)('logger')?.error('Failed to search deals', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to search deals' }, 500);
   }
 });
@@ -100,6 +104,7 @@ dealsRoutes.get('/stage/:stage', async (c) => {
     const deals = await queryDealsByStage(stage);
     return c.json(deals);
   } catch (error) {
+    (c.get as any)('logger')?.error('Failed to fetch deals by stage', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to fetch deals by stage' }, 500);
   }
 });
@@ -114,6 +119,7 @@ dealsRoutes.get('/:id', async (c) => {
     }
     return c.json(deal);
   } catch (error) {
+    (c.get as any)('logger')?.error('Failed to fetch deal', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to fetch deal' }, 500);
   }
 });
@@ -129,8 +135,10 @@ dealsRoutes.post('/', async (c) => {
     }
 
     const newDeal = await createDeal(result.data as any);
+    dealsCreatedCounter.inc();
     return c.json(newDeal, 201);
   } catch (error) {
+    (c.get as any)('logger')?.error('Failed to create deal', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to create deal' }, 500);
   }
 });
@@ -149,6 +157,7 @@ dealsRoutes.put('/:id', async (c) => {
     const updatedDeal = await updateDeal(id, result.data);
     return c.json(updatedDeal);
   } catch (error) {
+    (c.get as any)('logger')?.error('Failed to update deal', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to update deal' }, 500);
   }
 });
@@ -168,6 +177,7 @@ dealsRoutes.patch('/:id/stage', async (c) => {
     const updatedDeal = await updateDealStage(id, stage, reason);
     return c.json(updatedDeal);
   } catch (error) {
+    (c.get as any)('logger')?.error('Failed to update deal stage', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to update deal stage' }, 500);
   }
 });
@@ -179,6 +189,7 @@ dealsRoutes.delete('/:id', async (c) => {
     const updatedDeal = await updateDealStage(id, DealStage.FAILED, 'Soft deleted');
     return c.json(updatedDeal);
   } catch (error) {
+    (c.get as any)('logger')?.error('Failed to delete deal', { error: (error as Error).message || error });
     return c.json({ error: 'Failed to delete deal' }, 500);
   }
 });

@@ -16,7 +16,14 @@
   "dependencies": {
     "@closepilot/core": "workspace:*",
     "@closepilot/db": "workspace:*",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.49.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.52.0",
+    "@opentelemetry/resources": "^1.25.0",
+    "@opentelemetry/sdk-node": "^0.52.0",
+    "@opentelemetry/semantic-conventions": "^1.25.0",
     "hono": "^3.11.11",
+    "prom-client": "^15.1.3",
     "zod": "^3.22.4"
   },
   "devDependencies": {
