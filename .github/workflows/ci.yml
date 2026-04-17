@@ -56,3 +56,49 @@ jobs:
 
       - name: Type check all packages
         run: pnpm typecheck
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: closepilot
+          POSTGRES_USER: closepilot
+          POSTGRES_PASSWORD: localdev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://closepilot:localdev@localhost:5432/closepilot
+      ANTHROPIC_API_KEY: test-key
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.14.0
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Push DB schema
+        run: pnpm db:push
+
+      - name: Run E2E tests
+        run: pnpm test:e2e

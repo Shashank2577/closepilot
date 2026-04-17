@@ -14,7 +14,9 @@
     "mcp:dev": "pnpm --filter @closepilot/mcp-server dev",
     "api:dev": "pnpm --filter @closepilot/api dev",
     "web:dev": "pnpm --filter @closepilot/web dev",
-    "typecheck": "pnpm --filter \"@closepilot/*\" --parallel tsc --noEmit"
+    "typecheck": "pnpm --filter \"@closepilot/*\" --parallel tsc --noEmit",
+    "test:e2e": "pnpm --filter @closepilot/e2e test",
+    "test:smoke": "pnpm --filter @closepilot/e2e test src/tests/smoke.test.ts"
   },
   "keywords": [
     "b2b",
