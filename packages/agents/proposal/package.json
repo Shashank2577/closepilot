@@ -1,5 +1,5 @@
 {
-  "name": "proposal",
+  "name": "@closepilot/agents-proposal",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

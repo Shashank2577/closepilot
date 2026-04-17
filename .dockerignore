@@ -5,8 +5,11 @@ node_modules
 **/.turbo
 .git
 .github
-.env
 *.log
+.env
+.env.local
+**/.env.local
 coverage
-**/coverage
-.DS_Store
+.nyc_output
+*.md
+!README.md

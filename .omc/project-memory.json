@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1776275482355,
+  "lastScanned": 1776386744291,
   "projectRoot": "/Users/shashanksaxena/Documents/Personal/Code/closepilot",
   "techStack": {
     "languages": [
@@ -11,9 +11,28 @@
         "markers": [
           "package.json"
         ]
+      },
+      {
+        "name": "C/C++",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "Makefile"
+        ]
       }
     ],
-    "frameworks": [],
+    "frameworks": [
+      {
+        "name": "jest",
+        "version": "30.3.0",
+        "category": "testing"
+      },
+      {
+        "name": "vitest",
+        "version": "4.1.4",
+        "category": "testing"
+      }
+    ],
     "packageManager": "pnpm",
     "runtime": "Node.js 20.0.0"
   },
@@ -49,15 +68,28 @@
       "docs",
       "scripts"
     ],
-    "gitBranches": null
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
   },
   "customNotes": [],
   "directoryMap": {
+    "config": {
+      "path": "config",
+      "purpose": "Configuration files",
+      "fileCount": 2,
+      "lastAccessed": 1776386744242,
+      "keyFiles": [
+        "agents.yaml",
+        "pipeline.yaml"
+      ]
+    },
     "docs": {
       "path": "docs",
       "purpose": "Documentation",
       "fileCount": 2,
-      "lastAccessed": 1776275482345,
+      "lastAccessed": 1776386744243,
       "keyFiles": [
         "FOR_JULES.md",
         "JULES_WORKFLOW.md"
@@ -66,18 +98,21 @@
     "packages": {
       "path": "packages",
       "purpose": null,
-      "fileCount": 0,
-      "lastAccessed": 1776275482345,
-      "keyFiles": []
+      "fileCount": 1,
+      "lastAccessed": 1776386744266,
+      "keyFiles": [
+        "tsconfig.base.json"
+      ]
     },
     "scripts": {
       "path": "scripts",
       "purpose": "Build/utility scripts",
-      "fileCount": 4,
-      "lastAccessed": 1776275482348,
+      "fileCount": 5,
+      "lastAccessed": 1776386744279,
       "keyFiles": [
         "build-all.sh",
         "lint-all.sh",
+        "monitor-jules.sh",
         "setup.sh",
         "test-all.sh"
       ]
@@ -85,19 +120,44 @@
     "packages/api": {
       "path": "packages/api",
       "purpose": "API routes",
-      "fileCount": 3,
-      "lastAccessed": 1776275482349,
+      "fileCount": 5,
+      "lastAccessed": 1776386744285,
       "keyFiles": [
-        "package.json",
-        "tsconfig.json"
+        "Dockerfile",
+        "README.md",
+        "package.json"
       ]
     }
   },
   "hotPaths": [
     {
       "path": "packages/mcp-server/src/index.ts",
-      "accessCount": 11,
-      "lastAccessed": 1776318735030,
+      "accessCount": 27,
+      "lastAccessed": 1776360113149,
+      "type": "file"
+    },
+    {
+      "path": "packages/mcp-server/src/tests/calendar.test.ts",
+      "accessCount": 9,
+      "lastAccessed": 1776331672978,
+      "type": "file"
+    },
+    {
+      "path": "packages/agents/crm-sync/src/index.ts",
+      "accessCount": 8,
+      "lastAccessed": 1776328519202,
+      "type": "file"
+    },
+    {
+      "path": "packages/mcp-server/src/tools/calendar.ts",
+      "accessCount": 8,
+      "lastAccessed": 1776331600684,
+      "type": "file"
+    },
+    {
+      "path": ".jules-plan.json",
+      "accessCount": 7,
+      "lastAccessed": 1776360994691,
       "type": "file"
     },
     {
@@ -107,27 +167,147 @@
       "type": "file"
     },
     {
+      "path": "packages/agents/crm-sync/src/hubspot-adapter.ts",
+      "accessCount": 6,
+      "lastAccessed": 1776328553414,
+      "type": "file"
+    },
+    {
+      "path": "packages/mcp-server/package.json",
+      "accessCount": 6,
+      "lastAccessed": 1776329160372,
+      "type": "file"
+    },
+    {
+      "path": "packages/mcp-server/src/tools/drive.ts",
+      "accessCount": 5,
+      "lastAccessed": 1776331653795,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 5,
+      "lastAccessed": 1776353903650,
+      "type": "file"
+    },
+    {
+      "path": "packages/web/components/activity/ActivityItem.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1776321376159,
+      "type": "file"
+    },
+    {
+      "path": ".jules-tracker.md",
+      "accessCount": 4,
+      "lastAccessed": 1776387056395,
+      "type": "file"
+    },
+    {
       "path": "packages/db/src/queries/activities.ts",
       "accessCount": 3,
       "lastAccessed": 1776313725123,
       "type": "file"
     },
     {
-      "path": ".jules-plan.json",
-      "accessCount": 2,
-      "lastAccessed": 1776313682586,
+      "path": "packages/web/components/approvals/ApprovalBadge.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1776321416264,
       "type": "file"
     },
     {
-      "path": "packages/mcp-server/package.json",
-      "accessCount": 2,
-      "lastAccessed": 1776318669190,
+      "path": "packages/mcp-server/src/utils/google-auth.ts",
+      "accessCount": 3,
+      "lastAccessed": 1776326078247,
       "type": "file"
     },
     {
-      "path": "packages/mcp-server/src/tools/calendar.ts",
+      "path": "packages/agents/crm-sync/src/pipedrive-adapter.ts",
+      "accessCount": 3,
+      "lastAccessed": 1776328499032,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 3,
+      "lastAccessed": 1776329159090,
+      "type": "file"
+    },
+    {
+      "path": "packages/web/next.config.js",
+      "accessCount": 3,
+      "lastAccessed": 1776329960536,
+      "type": "file"
+    },
+    {
+      "path": "packages/api/package.json",
+      "accessCount": 3,
+      "lastAccessed": 1776360565033,
+      "type": "file"
+    },
+    {
+      "path": "packages/web/tsconfig.json",
       "accessCount": 2,
-      "lastAccessed": 1776320592295,
+      "lastAccessed": 1776320974747,
+      "type": "file"
+    },
+    {
+      "path": "packages/web/lib/auth/oauth.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776321042743,
+      "type": "file"
+    },
+    {
+      "path": "packages/web/lib/auth/session.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776321049753,
+      "type": "file"
+    },
+    {
+      "path": "packages/web/app/auth/refresh/route.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776321057108,
+      "type": "file"
+    },
+    {
+      "path": "packages/core/src/types/calendar.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776326178100,
+      "type": "file"
+    },
+    {
+      "path": "packages/agents/scoping/tsconfig.json",
+      "accessCount": 2,
+      "lastAccessed": 1776326230589,
+      "type": "file"
+    },
+    {
+      "path": "packages/agents/ingestion/src/monitor.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776326255745,
+      "type": "file"
+    },
+    {
+      "path": "packages/db/package.json",
+      "accessCount": 2,
+      "lastAccessed": 1776329159988,
+      "type": "file"
+    },
+    {
+      "path": "packages/core/src/types/deal.ts",
+      "accessCount": 2,
+      "lastAccessed": 1776329335668,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 2,
+      "lastAccessed": 1776341403868,
+      "type": "directory"
+    },
+    {
+      "path": ".jules-final-status.md",
+      "accessCount": 2,
+      "lastAccessed": 1776387056005,
       "type": "file"
     },
     {
@@ -137,21 +317,9 @@
       "type": "file"
     },
     {
-      "path": ".jules-tracker.md",
-      "accessCount": 1,
-      "lastAccessed": 1776276242211,
-      "type": "file"
-    },
-    {
       "path": "scripts/monitor-jules.sh",
       "accessCount": 1,
       "lastAccessed": 1776276335743,
-      "type": "file"
-    },
-    {
-      "path": ".jules-final-status.md",
-      "accessCount": 1,
-      "lastAccessed": 1776310198581,
       "type": "file"
     },
     {
@@ -173,12 +341,6 @@
       "type": "file"
     },
     {
-      "path": "packages/web/components/activity/ActivityItem.tsx",
-      "accessCount": 1,
-      "lastAccessed": 1776313742837,
-      "type": "file"
-    },
-    {
       "path": "packages/web/components/activity/useActivityStream.ts",
       "accessCount": 1,
       "lastAccessed": 1776313743188,
@@ -197,21 +359,75 @@
       "type": "file"
     },
     {
-      "path": "packages/api/package.json",
+      "path": "tsconfig.base.json",
       "accessCount": 1,
-      "lastAccessed": 1776313797181,
+      "lastAccessed": 1776320966438,
       "type": "file"
     },
     {
-      "path": "packages/db/package.json",
+      "path": "packages/web/app/auth/logout/route.ts",
       "accessCount": 1,
-      "lastAccessed": 1776313801286,
+      "lastAccessed": 1776321076955,
       "type": "file"
     },
     {
-      "path": "packages/mcp-server/src/tools/drive.ts",
+      "path": "packages/web/app/api/user/route.ts",
       "accessCount": 1,
-      "lastAccessed": 1776318628215,
+      "lastAccessed": 1776321077808,
+      "type": "file"
+    },
+    {
+      "path": "packages/web/app/layout.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1776321083483,
+      "type": "file"
+    },
+    {
+      "path": "packages/web/app/auth/callback/route.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776321088162,
+      "type": "file"
+    },
+    {
+      "path": "packages/agents/scoping/src/index.test.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776326215045,
+      "type": "file"
+    },
+    {
+      "path": "packages/agents/package.json",
+      "accessCount": 1,
+      "lastAccessed": 1776329159468,
+      "type": "file"
+    },
+    {
+      "path": "packages/core/package.json",
+      "accessCount": 1,
+      "lastAccessed": 1776329159893,
+      "type": "file"
+    },
+    {
+      "path": "packages/mcp-client/package.json",
+      "accessCount": 1,
+      "lastAccessed": 1776329160209,
+      "type": "file"
+    },
+    {
+      "path": "packages/web/package.json",
+      "accessCount": 1,
+      "lastAccessed": 1776329160581,
+      "type": "file"
+    },
+    {
+      "path": "packages/core/src/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776329323087,
+      "type": "file"
+    },
+    {
+      "path": "packages/db/src/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1776329323162,
       "type": "file"
     }
   ],

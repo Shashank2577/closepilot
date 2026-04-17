@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createServer } from 'node:http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -30,7 +31,41 @@ function getAuthConfig() {
   };
 }
 
+function startHealthServer() {
+  const healthServer = createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/health') {
+      const body = JSON.stringify({ status: 'ok' });
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      });
+      res.end(body);
+      return;
+    }
+
+    const body = JSON.stringify({ error: 'not found' });
+    res.writeHead(404, {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    });
+    res.end(body);
+  });
+
+  healthServer.on('error', (error) => {
+    console.error('Closepilot MCP health server error:', error);
+  });
+
+  healthServer.listen(3000, () => {
+    console.error('Closepilot MCP health server running on port 3000');
+  });
+
+  return healthServer;
+}
+
 async function main() {
+  startHealthServer();
+
   // Create MCP server
   const server = new Server(
     {
@@ -530,7 +565,9 @@ async function main() {
   console.error('Closepilot Deal Store MCP Server running on stdio');
 }
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+}

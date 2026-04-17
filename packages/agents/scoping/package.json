@@ -9,6 +9,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
+    "test": "echo 'Tests not configured yet'",
     "lint": "echo 'Linting not configured yet'"
   },
   "dependencies": {

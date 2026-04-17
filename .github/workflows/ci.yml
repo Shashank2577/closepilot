@@ -30,10 +30,10 @@ jobs:
         run: pnpm build
 
       - name: Run tests
-        run: pnpm test || exit 0  # Tests may be stubs
+        run: pnpm test
 
       - name: Run linting
-        run: pnpm lint || exit 0  # Linting may not be configured
+        run: pnpm lint || true  # Most packages use stub lint; web uses next lint
 
   type-check:
     runs-on: ubuntu-latest
@@ -56,3 +56,12 @@ jobs:
 
       - name: Type check all packages
         run: pnpm typecheck
+
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Docker build smoke test
+        run: docker compose build --no-cache
