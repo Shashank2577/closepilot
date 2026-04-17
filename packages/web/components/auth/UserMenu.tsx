@@ -43,7 +43,7 @@ export function UserMenu({ userEmail }: UserMenuProps) {
     <div className="relative">
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        variant="secondary"
+        variant="outline"
         className="flex items-center gap-2"
       >
         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">

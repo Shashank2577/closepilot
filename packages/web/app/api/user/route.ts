@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccessToken } from '@/lib/auth/oauth';
 
+interface GoogleUserInfo {
+  email: string;
+  name: string;
+  picture: string;
+}
+
 /**
  * Get current user information from Google
  */
@@ -29,7 +35,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userInfo = await response.json();
+    const userInfo = await response.json() as GoogleUserInfo;
 
     return NextResponse.json({
       email: userInfo.email,
