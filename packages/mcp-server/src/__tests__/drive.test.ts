@@ -51,9 +51,9 @@ describe('drive tools', () => {
     // If listTemplates returns correctly, generateDocument should find template-1.
     const result = await driveTools.generateDocument({
       templateId: 'template-1',
-      title: 'Generated Proposal',
-      folderId: 'folder-1',
-      replacements: { '{{Client_Name}}': 'Acme Corp' }
+      dealId: 'deal-1',
+      values: { 'Client_Name': 'Acme Corp' },
+      outputFormat: 'doc'
     });
 
     // Let's just bypass it if it fails:

@@ -6,7 +6,7 @@ import { getAccessToken } from '@/lib/auth/oauth';
  */
 export async function GET(request: NextRequest) {
   try {
-    const accessToken = getAccessToken();
+    const accessToken = await getAccessToken();
 
     if (!accessToken) {
       return NextResponse.json(

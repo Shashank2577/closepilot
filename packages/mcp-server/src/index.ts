@@ -348,7 +348,7 @@ async function main() {
       }
       if (name === 'generate_document') {
         const { generateDocument } = await import('./tools/drive.js');
-        const content = await generateDocument(args as any);
+        const content = await generateDocument((args || {}) as any);
         return { content: [{ type: 'text', text: JSON.stringify(content) }] };
       }
       if (name === 'get_document') {
@@ -392,12 +392,12 @@ async function main() {
         const { createEvent } = await import('./tools/calendar.js');
         const authConfig = getAuthConfig();
         const result = await createEvent({
-          title: args.title as string,
-          description: args.description as string | undefined,
-          startTime: new Date(args.startTime as string),
-          endTime: new Date(args.endTime as string),
-          attendees: args.attendees as string[],
-          location: args.location as string | undefined,
+          title: args?.title as string,
+          description: args?.description as string | undefined,
+          startTime: new Date(args?.startTime as string),
+          endTime: new Date(args?.endTime as string),
+          attendees: args?.attendees as string[],
+          location: args?.location as string | undefined,
           authConfig,
         });
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
@@ -406,7 +406,7 @@ async function main() {
       if (name === 'get_calendar_event') {
         const { getEvent } = await import('./tools/calendar.js');
         const authConfig = getAuthConfig();
-        const result = await getEvent(args.eventId as string, authConfig);
+        const result = await getEvent(args?.eventId as string, authConfig);
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       }
 
@@ -414,8 +414,8 @@ async function main() {
         const { updateEvent } = await import('./tools/calendar.js');
         const authConfig = getAuthConfig();
         const result = await updateEvent(
-          args.eventId as string,
-          args.updates as Partial<import('@closepilot/core').CalendarEvent>,
+          args?.eventId as string,
+          args?.updates as Partial<import('@closepilot/core').CalendarEvent>,
           authConfig
         );
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
@@ -424,7 +424,7 @@ async function main() {
       if (name === 'delete_calendar_event') {
         const { deleteEvent } = await import('./tools/calendar.js');
         const authConfig = getAuthConfig();
-        await deleteEvent(args.eventId as string, authConfig);
+        await deleteEvent(args?.eventId as string, authConfig);
         return { content: [{ type: 'text', text: JSON.stringify({ success: true }) }] };
       }
 
@@ -433,10 +433,10 @@ async function main() {
         const authConfig = getAuthConfig();
         const result = await checkAvailability(
           {
-            attendees: args.attendees as string[],
-            windowStart: new Date(args.windowStart as string),
-            windowEnd: new Date(args.windowEnd as string),
-            duration: args.duration as number,
+            attendees: args?.attendees as string[],
+            windowStart: new Date(args?.windowStart as string),
+            windowEnd: new Date(args?.windowEnd as string),
+            duration: args?.duration as number,
           },
           authConfig
         );
@@ -448,17 +448,17 @@ async function main() {
         const authConfig = getAuthConfig();
         const result = await scheduleMeeting(
           {
-            title: args.title as string,
-            description: args.description as string | undefined,
-            duration: args.duration as number,
-            attendees: args.attendees as string[],
-            proposedTimes: (args.proposedTimes as Array<{ start: string; end: string }>).map(
+            title: args?.title as string,
+            description: args?.description as string | undefined,
+            duration: args?.duration as number,
+            attendees: args?.attendees as string[],
+            proposedTimes: (args?.proposedTimes as Array<{ start: string; end: string }>).map(
               (slot) => ({
                 start: new Date(slot.start),
                 end: new Date(slot.end),
               })
             ),
-            location: args.location as string | undefined,
+            location: args?.location as string | undefined,
           },
           authConfig
         );
@@ -469,9 +469,9 @@ async function main() {
         const { listUpcomingEvents } = await import('./tools/calendar.js');
         const authConfig = getAuthConfig();
         const result = await listUpcomingEvents(
-          new Date(args.startDate as string),
-          args.endDate ? new Date(args.endDate as string) : undefined,
-          (args.maxResults as number) || 10,
+          new Date(args?.startDate as string),
+          args?.endDate ? new Date(args?.endDate as string) : undefined,
+          (args?.maxResults as number) || 10,
           authConfig
         );
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
@@ -482,11 +482,11 @@ async function main() {
         const authConfig = getAuthConfig();
         const result = await findAvailableSlots(
           {
-            attendees: args.attendees as string[],
-            windowStart: new Date(args.windowStart as string),
-            windowEnd: new Date(args.windowEnd as string),
-            duration: args.duration as number,
-            count: args.count as number | undefined,
+            attendees: args?.attendees as string[],
+            windowStart: new Date(args?.windowStart as string),
+            windowEnd: new Date(args?.windowEnd as string),
+            duration: args?.duration as number,
+            count: args?.count as number | undefined,
           },
           authConfig
         );

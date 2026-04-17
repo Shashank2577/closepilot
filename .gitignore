@@ -1,56 +1,34 @@
-# Dependencies
 node_modules/
-.pnp
-.pnp.js
-
-# Testing
-coverage/
-
-# Production
-build/
 dist/
 .next/
-out/
-
-# Misc
-.DS_Store
-*.pem
-.env*
-!.env.example
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Local env files
-.env*.local
-.env.local
-
-# Vercel
-.vercel
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-Thumbs.db
-
-# Jules session tracking files (may contain secrets)
-.jules-sessions.md
-.jules-tracker.md
-.jules-final-status.md
-.jules-plan.json
-.omc/jules-session-status.md
-scripts/monitor-jules.sh
-
-# OMC runtime state
-.omc/state/
+*.js
+!jest.config.js
+!jest.setup.js
+!next.config.js
+!postcss.config.js
+!tailwind.config.js
+!packages/web/next.config.js
+!packages/web/postcss.config.js
+!packages/web/tailwind.config.js
+!packages/web/jest.config.js
+!packages/web/jest.setup.js
+!packages/api/jest.config.js
+!packages/api/jest.setup.js
+!packages/core/jest.config.js
+!packages/core/jest.setup.js
+!packages/db/jest.config.js
+!packages/db/jest.setup.js
+!packages/mcp-client/jest.config.js
+!packages/mcp-client/jest.setup.js
+!packages/mcp-server/jest.config.js
+!packages/mcp-server/jest.setup.js
+!packages/agents/crm-sync/jest.config.js
+!packages/agents/crm-sync/jest.setup.js
+!packages/agents/enrichment/jest.config.js
+!packages/agents/enrichment/jest.setup.js
+!packages/agents/ingestion/jest.config.js
+!packages/agents/ingestion/jest.setup.js
+!packages/agents/orchestrator/jest.config.js
+!packages/agents/orchestrator/jest.setup.js
+!packages/agents/scoping/jest.config.js
+!packages/agents/scoping/jest.setup.js

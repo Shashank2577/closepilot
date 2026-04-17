@@ -9,7 +9,7 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
  */
 export async function POST(request: NextRequest) {
   try {
-    const refreshToken = cookies().get('refresh_token')?.value;
+    const refreshToken = (await cookies()).get('refresh_token')?.value;
 
     if (!refreshToken) {
       return NextResponse.json(
@@ -54,8 +54,8 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
     };
 
-    cookies().set('access_token', tokens.access_token, cookieOptions);
-    cookies().set(
+    (await cookies()).set('access_token', tokens.access_token, cookieOptions);
+    (await cookies()).set(
       'token_expiry',
       String(Date.now() + tokens.expires_in * 1000),
       cookieOptions
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     // Update refresh token if a new one is provided
     if (tokens.refresh_token) {
-      cookies().set('refresh_token', tokens.refresh_token, cookieOptions);
+      (await cookies()).set('refresh_token', tokens.refresh_token, cookieOptions);
     }
 
     return NextResponse.json({ success: true });

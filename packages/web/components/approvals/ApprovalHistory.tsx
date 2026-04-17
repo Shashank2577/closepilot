@@ -48,13 +48,13 @@ export function ApprovalHistory({ dealId }: ApprovalHistoryProps) {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
-      pending: 'default',
-      approved: 'secondary',
-      rejected: 'destructive',
+    const variants: Record<string, 'success' | 'warning' | 'danger' | 'info' | undefined> = {
+      pending: 'warning',
+      approved: 'success',
+      rejected: 'danger',
     };
     return (
-      <Badge variant={variants[status] || 'default'}>
+      <Badge variant={variants[status]}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );

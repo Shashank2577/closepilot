@@ -54,13 +54,13 @@ export function ApprovalList() {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
-      pending: 'default',
-      approved: 'secondary',
-      rejected: 'destructive',
+    const variants: Record<string, 'success' | 'warning' | 'danger' | 'info' | undefined> = {
+      pending: 'warning',
+      approved: 'success',
+      rejected: 'danger',
     };
     return (
-      <Badge variant={variants[status] || 'default'}>
+      <Badge variant={variants[status]}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
@@ -87,7 +87,7 @@ export function ApprovalList() {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <p className="text-red-800">{error}</p>
-        <Button onClick={fetchApprovals} variant="outline" className="mt-2">
+        <Button onClick={fetchApprovals} variant="secondary" className="mt-2">
           Retry
         </Button>
       </div>
@@ -155,7 +155,7 @@ export function ApprovalList() {
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <Button
                     onClick={() => setSelectedApproval(approval)}
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                   >
                     Review

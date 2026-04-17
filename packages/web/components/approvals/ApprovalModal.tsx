@@ -61,7 +61,7 @@ export function ApprovalModal({ approval, onClose, onUpdate }: ApprovalModalProp
         throw new Error(data.error || 'Failed to submit response');
       }
 
-      onUpdate(approval.id, action);
+      onUpdate(approval.id, action === 'approve' ? 'approved' : 'rejected');
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -184,12 +184,12 @@ export function ApprovalModal({ approval, onClose, onUpdate }: ApprovalModalProp
             )}
 
             <div className="flex justify-end space-x-3 pt-4">
-              <Button onClick={onClose} variant="outline" disabled={submitting}>
+              <Button onClick={onClose} variant="secondary" disabled={submitting}>
                 Cancel
               </Button>
               <Button
                 onClick={() => handleSubmit('reject')}
-                variant="destructive"
+                variant="danger"
                 disabled={submitting}
               >
                 Reject

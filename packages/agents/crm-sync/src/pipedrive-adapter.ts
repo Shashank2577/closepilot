@@ -32,7 +32,7 @@ export class PipedriveAdapter implements CRMAdapter {
 
     // Dynamic import to avoid requiring pipedrive client if not used
     const { default: Pipedrive } = await import('pipedrive');
-    this.client = new Pipedrive.Client({
+    this.client = new (Pipedrive as any).ApiClient({
       apiToken: config.apiKey,
     });
 

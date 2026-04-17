@@ -11,6 +11,9 @@
       }
     ],
     "allowJs": true,
+    "paths": {
+      "@/*": ["./*"]
+    },
     "noEmit": true
   },
   "include": [
