@@ -8,7 +8,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { dealStoreToolDefinitions, handleDealStoreToolCall, registerDealStoreTools } from './tools/deal-store.js';
-import { registerGmailTools, gmailToolHandlers } from './tools/gmail.js';
+import { registerGmailTools, gmailToolHandlers, gmailToolDefinitions } from './tools/gmail.js';
 import { registerCalendarTools } from './tools/calendar.js';
 import { registerDriveTools } from './tools/drive.js';
 
@@ -54,7 +54,11 @@ async function main() {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
-        // Deal Store tools (stubs - see J-101)
+        // Deal Store tools
+        ...dealStoreToolDefinitions,
+        // Gmail tools
+        ...gmailToolDefinitions,
+        // Calendar tools
         {
           name: 'create_calendar_event',
           description: 'Create a new calendar event with attendees',
@@ -456,28 +460,17 @@ async function main() {
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       }
 
-      // Deal Store tools (stubs)
-      if (name === 'create_deal' || name === 'get_deal' || name === 'update_deal_stage') {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool ${name} not yet implemented - see J-101`,
-            },
-          ],
-        };
+      // Deal Store tools
+      const dealStoreResult = await handleDealStoreToolCall(name, args);
+      if (dealStoreResult !== null) {
+        return dealStoreResult;
       }
 
-      // Gmail tools (stubs)
-      if (name.startsWith('gmail_')) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool ${name} not yet implemented - see J-102`,
-            },
-          ],
-        };
+      // Gmail tools
+      const gmailHandler = gmailToolHandlers[name];
+      if (gmailHandler) {
+        const result = await gmailHandler(args);
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       }
 
       // Drive tools (stubs)

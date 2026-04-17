@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { searchEmails, getThread, extractEmailContext } from '../gmail';
+import { searchEmails, getThread, extractEmailContext, listEmails, sendEmail, createDraft } from '../gmail';
 
 // Mock simpleParser
 vi.mock('mailparser', () => ({
@@ -52,7 +52,10 @@ vi.mock('googleapis', () => {
             raw: Buffer.from('mock-email-content').toString('base64url'),
             labelIds: ['INBOX']
           }
-        })
+        }),
+        send: vi.fn().mockResolvedValue({
+          data: { id: 'sent1', threadId: 'thread1' }
+        }),
       },
       threads: {
         list: vi.fn().mockResolvedValue({
@@ -64,7 +67,12 @@ vi.mock('googleapis', () => {
             messages: [{ id: 'msg1', labelIds: ['INBOX'] }]
           }
         })
-      }
+      },
+      drafts: {
+        create: vi.fn().mockResolvedValue({
+          data: { id: 'draft1', message: { id: 'draftmsg1' } }
+        }),
+      },
     }
   };
 
@@ -102,6 +110,67 @@ describe('Gmail Tools', () => {
       expect(thread?.id).toBe('thread1');
       expect(thread?.messages).toHaveLength(1);
       expect(thread?.subject).toBe('Test Subject');
+    });
+  });
+
+  describe('listEmails', () => {
+    it('should list emails with default limit', async () => {
+      const response = await listEmails();
+      expect(response.messages).toHaveLength(1);
+      expect(response.messages[0].id).toBe('msg1');
+      expect(response.nextPageToken).toBe('token123');
+    });
+
+    it('should list emails with a search query', async () => {
+      const response = await listEmails('from:boss@example.com', 5);
+      expect(response.messages).toHaveLength(1);
+      expect(response.messages[0].subject).toBe('Test Subject');
+    });
+  });
+
+  describe('sendEmail', () => {
+    it('should send an email and return the sent message', async () => {
+      const sent = await sendEmail({
+        to: ['recipient@example.com'],
+        subject: 'Hello',
+        body: 'Test body',
+      });
+      expect(sent).toBeDefined();
+      expect(sent.id).toBe('msg1');
+      expect(sent.subject).toBe('Test Subject');
+    });
+
+    it('should include cc when provided', async () => {
+      const sent = await sendEmail({
+        to: ['recipient@example.com'],
+        subject: 'Hello',
+        body: 'Test body',
+        cc: ['cc@example.com'],
+      });
+      expect(sent).toBeDefined();
+      expect(sent.id).toBe('msg1');
+    });
+  });
+
+  describe('createDraft', () => {
+    it('should create a draft and return draft ID and message ID', async () => {
+      const draft = await createDraft({
+        to: ['recipient@example.com'],
+        subject: 'Draft Subject',
+        body: 'Draft body',
+      });
+      expect(draft.draftId).toBe('draft1');
+      expect(draft.messageId).toBe('draftmsg1');
+    });
+
+    it('should create a draft with cc recipients', async () => {
+      const draft = await createDraft({
+        to: ['recipient@example.com'],
+        subject: 'Draft Subject',
+        body: 'Draft body',
+        cc: ['cc@example.com'],
+      });
+      expect(draft.draftId).toBe('draft1');
     });
   });
 

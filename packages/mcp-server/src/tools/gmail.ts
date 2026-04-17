@@ -25,14 +25,68 @@ if (process.env.GMAIL_REFRESH_TOKEN) {
 const gmailAPI = google.gmail({ version: 'v1', auth: oauth2Client });
 
 /**
+ * MCP tool definitions for Gmail tools exposed to agents
+ */
+export const gmailToolDefinitions = [
+  {
+    name: 'get_thread',
+    description: 'Fetch a Gmail thread and all its messages by thread ID',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        threadId: { type: 'string', description: 'Gmail thread ID' },
+      },
+      required: ['threadId'],
+    },
+  },
+  {
+    name: 'list_emails',
+    description: 'List emails from Gmail inbox with optional search query',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Gmail search query (optional)' },
+        limit: { type: 'number', description: 'Maximum number of emails to return (default 20)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'send_email',
+    description: 'Send an email via Gmail',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        to: { type: 'array', items: { type: 'string' }, description: 'Recipient email addresses' },
+        subject: { type: 'string', description: 'Email subject' },
+        body: { type: 'string', description: 'Email body (plain text)' },
+        cc: { type: 'array', items: { type: 'string' }, description: 'CC email addresses (optional)' },
+        bcc: { type: 'array', items: { type: 'string' }, description: 'BCC email addresses (optional)' },
+      },
+      required: ['to', 'subject', 'body'],
+    },
+  },
+  {
+    name: 'create_draft',
+    description: 'Create a draft email in Gmail without sending it',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        to: { type: 'array', items: { type: 'string' }, description: 'Recipient email addresses' },
+        subject: { type: 'string', description: 'Email subject' },
+        body: { type: 'string', description: 'Email body (plain text)' },
+        cc: { type: 'array', items: { type: 'string' }, description: 'CC email addresses (optional)' },
+      },
+      required: ['to', 'subject', 'body'],
+    },
+  },
+];
+
+/**
  * Register Gmail integration tools with MCP server
  */
 export function registerGmailTools(server: any): void {
-  // Note: ListTools is handled centrally in index.ts for this app architecture
-  // But we provide the tool handlers here for CallToolRequestSchema
-
-  // We'll expose the handlers through a map that index.ts can use
-  // Or we could attach them directly to the server object if it supported that
+  // Tool definitions and routing handled centrally in index.ts
   console.log('Gmail tools registered');
 }
 
@@ -44,11 +98,28 @@ export const gmailToolHandlers: Record<string, (args: any) => Promise<any>> = {
   get_thread: async (args) => {
     return await getThread(args.threadId);
   },
+  list_emails: async (args) => {
+    return await listEmails(args.query, args.limit);
+  },
   get_message: async (args) => {
     return await getMessage(args.messageId);
   },
   send_email: async (args) => {
-    return await sendEmail(args);
+    return await sendEmail({
+      to: args.to,
+      subject: args.subject,
+      body: args.body,
+      cc: args.cc,
+      threadId: args.threadId,
+    });
+  },
+  create_draft: async (args) => {
+    return await createDraft({
+      to: args.to,
+      subject: args.subject,
+      body: args.body,
+      cc: args.cc,
+    });
   },
   extract_email_context: async (args) => {
     return await extractEmailContext(args.messageId);
@@ -59,7 +130,7 @@ export const gmailToolHandlers: Record<string, (args: any) => Promise<any>> = {
   watch_emails: async (args) => {
     return await watchEmails(args.topic);
   },
-  stop_watching: async (args) => {
+  stop_watching: async (_args) => {
     await stopWatching();
     return { success: true };
   }
@@ -415,6 +486,95 @@ export async function sendEmail(params: {
     return sentMessage;
   } catch (error) {
     console.error('Error sending email:', error);
+    throw error;
+  }
+}
+
+/**
+ * List emails from Gmail with optional search query
+ */
+export async function listEmails(
+  query?: string,
+  limit = 20
+): Promise<{ messages: EmailMessage[]; nextPageToken?: string }> {
+  try {
+    const response = await gmailAPI.users.messages.list({
+      userId: 'me',
+      q: query || '',
+      maxResults: limit,
+    });
+
+    const messageRefs = response.data.messages || [];
+    const messages: EmailMessage[] = [];
+
+    for (const ref of messageRefs) {
+      if (ref.id) {
+        const msg = await getMessage(ref.id);
+        if (msg) messages.push(msg);
+      }
+    }
+
+    return {
+      messages,
+      nextPageToken: response.data.nextPageToken || undefined,
+    };
+  } catch (error) {
+    console.error('Error listing emails:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create a draft email in Gmail without sending it
+ */
+export async function createDraft(params: {
+  to: string[];
+  subject: string;
+  body: string;
+  cc?: string[];
+}): Promise<{ draftId: string; messageId: string }> {
+  try {
+    const messageParts = [
+      `To: ${params.to.join(', ')}`,
+      `Subject: ${params.subject}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/plain; charset=utf-8',
+    ];
+
+    if (params.cc && params.cc.length > 0) {
+      messageParts.push(`Cc: ${params.cc.join(', ')}`);
+    }
+
+    messageParts.push(''); // blank line between headers and body
+    messageParts.push(params.body);
+
+    const rawMessage = messageParts.join('\n');
+
+    const encodedMessage = Buffer.from(rawMessage)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const response = await gmailAPI.users.drafts.create({
+      userId: 'me',
+      requestBody: {
+        message: {
+          raw: encodedMessage,
+        },
+      },
+    });
+
+    if (!response.data.id) {
+      throw new Error('Failed to create draft: No draft ID returned');
+    }
+
+    return {
+      draftId: response.data.id,
+      messageId: response.data.message?.id || '',
+    };
+  } catch (error) {
+    console.error('Error creating draft:', error);
     throw error;
   }
 }
