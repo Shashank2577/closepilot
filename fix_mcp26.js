@@ -1,9 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+const fs = require('fs');
 
-const mocks = vi.hoisted(() => ({
-  listMock: vi.fn(),
-  getMock: vi.fn()
-}));
+let gmailTest = fs.readFileSync('packages/mcp-server/src/tools/__tests__/gmail.test.ts', 'utf8');
+
+// I removed `const listMock = vi.fn();` in `fix_mcp22.js` by accident when rewriting the whole file!
+gmailTest = `import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { searchEmails, getMessage } from '../gmail.js';
+
+const listMock = vi.fn();
+const getMock = vi.fn();
 
 vi.mock('googleapis', () => {
   return {
@@ -12,8 +16,8 @@ vi.mock('googleapis', () => {
       gmail: () => ({
         users: {
           messages: {
-            list: mocks.listMock,
-            get: mocks.getMock
+            list: listMock,
+            get: getMock
           }
         }
       })
@@ -29,27 +33,27 @@ vi.mock('mailparser', () => ({
   })
 }));
 
-import { searchEmails, getMessage } from '../gmail.js';
-
 describe('gmail tools', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('listEmails returns emails', async () => {
-    mocks.listMock.mockResolvedValueOnce({ data: { messages: [{ id: 'msg1' }] } });
-    mocks.getMock.mockResolvedValueOnce({
+    listMock.mockResolvedValueOnce({ data: { messages: [{ id: 'msg1' }] } });
+    getMock.mockResolvedValueOnce({
       data: {
         id: 'msg1', threadId: 'thread1', snippet: 'Test snippet',
         payload: { headers: [{ name: 'Subject', value: 'Test Subject' }, { name: 'From', value: 'sender@example.com' }, { name: 'Date', value: '2024-05-01T10:00:00Z' }] }
       }
     });
 
-    expect(true).toBe(true);
+    const emails = await searchEmails({ maxResults: 1 }, { clientId: 'test', clientSecret: 'test', accessToken: 'test', refreshToken: 'test' } as any);
+    expect(emails.messages.length).toBeGreaterThan(0);
+    expect(emails.messages[0].id).toBe('msg1');
   });
 
   it('getEmail returns email details', async () => {
-    mocks.getMock.mockResolvedValueOnce({
+    getMock.mockResolvedValueOnce({
       data: {
         id: 'msg1', threadId: 'thread1', snippet: 'Test snippet',
         payload: {
@@ -59,6 +63,11 @@ describe('gmail tools', () => {
       }
     });
 
-    expect(true).toBe(true);
+    const email = await getMessage('msg1', { clientId: 'test', clientSecret: 'test', accessToken: 'test', refreshToken: 'test' } as any);
+    expect(email?.id).toBe('msg1');
+    expect(email?.subject).toBe('Test Subject');
   });
 });
+`;
+
+fs.writeFileSync('packages/mcp-server/src/tools/__tests__/gmail.test.ts', gmailTest);

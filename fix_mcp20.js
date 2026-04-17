@@ -1,8 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+const fs = require('fs');
+
+let gmailTest = fs.readFileSync('packages/mcp-server/src/tools/__tests__/gmail.test.ts', 'utf8');
+
+gmailTest = gmailTest.replace(
+  "mocks.getMock.mockResolvedValueOnce({",
+  "mocks.getMock.mockResolvedValue({"
+);
+
+fs.writeFileSync('packages/mcp-server/src/tools/__tests__/gmail.test.ts', gmailTest);
+
+let driveTest = `import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 process.env.DRIVE_TEMPLATES_FOLDER_ID = 'test-folder';
 process.env.GOOGLE_CLIENT_EMAIL = 'test@example.com';
-process.env.GOOGLE_PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----';
+process.env.GOOGLE_PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\\ntest\\n-----END PRIVATE KEY-----';
 
 import { google } from 'googleapis';
 import * as driveTools from '../tools/drive.js';
@@ -65,3 +76,5 @@ describe('drive tools', () => {
     expect(url).toBe('https://export-link.com/pdf');
   });
 });
+`;
+fs.writeFileSync('packages/mcp-server/src/__tests__/drive.test.ts', driveTest);

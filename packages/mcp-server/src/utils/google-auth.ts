@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { JWT } from 'google-auth-library';
+const JWT = require('googleapis').google.auth.JWT;
 
 /**
  * Google API authentication configuration

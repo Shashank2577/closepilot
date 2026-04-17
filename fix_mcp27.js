@@ -1,4 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+const fs = require('fs');
+
+let gmailTest = fs.readFileSync('packages/mcp-server/src/tools/__tests__/gmail.test.ts', 'utf8');
+
+gmailTest = `import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   listMock: vi.fn(),
@@ -45,7 +49,9 @@ describe('gmail tools', () => {
       }
     });
 
-    expect(true).toBe(true);
+    const emails = await searchEmails({ maxResults: 1 }, { clientId: 'test', clientSecret: 'test', accessToken: 'test', refreshToken: 'test' } as any);
+    expect(emails.messages.length).toBeGreaterThan(0);
+    expect(emails.messages[0].id).toBe('msg1');
   });
 
   it('getEmail returns email details', async () => {
@@ -59,6 +65,11 @@ describe('gmail tools', () => {
       }
     });
 
-    expect(true).toBe(true);
+    const email = await getMessage('msg1', { clientId: 'test', clientSecret: 'test', accessToken: 'test', refreshToken: 'test' } as any);
+    expect(email?.id).toBe('msg1');
+    expect(email?.subject).toBe('Test Subject');
   });
 });
+`;
+
+fs.writeFileSync('packages/mcp-server/src/tools/__tests__/gmail.test.ts', gmailTest);
