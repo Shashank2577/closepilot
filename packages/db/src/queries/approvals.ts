@@ -1,7 +1,6 @@
 import { eq, desc } from 'drizzle-orm';
 import { approvals } from '../schema';
 import { getDb } from '../db';
-import { eq, desc } from 'drizzle-orm';
 import type { Approval, NewApproval } from '../schema/approvals';
 
 /**

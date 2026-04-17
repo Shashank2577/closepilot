@@ -3,6 +3,8 @@ import { z } from 'zod';
 import type { Deal } from '@closepilot/core';
 import { DealStage } from '@closepilot/core';
 import {
+  getDeals,
+  getDealStats,
   createDeal,
   getDeal,
   updateDeal,
@@ -17,29 +19,6 @@ import {
  */
 
 // Validation Schemas
-export const dealInputSchema = z.object({
-  leadEmail: z.string().email(),
-  leadName: z.string().min(1),
-  leadCompany: z.string().optional(),
-  leadTitle: z.string().optional(),
-  threadId: z.string().optional(),
-  initialEmailId: z.string().optional(),
-  source: z.enum(['gmail', 'manual', 'other'])
-});
-
-export const updateDealSchema = dealInputSchema.partial().extend({
-  assignedAgent: z.string().optional(),
-  approvalStatus: z.enum(['pending', 'approved', 'rejected']).optional()
-});
-
-export const updateStageSchema = z.object({
-  stage: z.nativeEnum(DealStage),
-  reason: z.string().optional()
-});
-
-export const dealsRoutes = new Hono();
-
-// Validation schemas
 const dealInputSchema = z.object({
   leadEmail: z.string().email('Invalid email address'),
   leadName: z.string().min(1, 'Lead name is required'),
@@ -87,6 +66,8 @@ const searchSimilarDealsSchema = z.object({
   limit: z.string().transform((val) => (val ? parseInt(val, 10) : 5)).optional(),
 });
 
+export const dealsRoutes = new Hono();
+
 // Error response helper
 function errorResponse(message: string, status = 500, details?: unknown) {
   const response: Record<string, unknown> = { error: message };
@@ -107,36 +88,13 @@ dealsRoutes.get('/', async (c) => {
 
     const { stage, limit = 50, offset = 0, sortBy = 'createdAt', sortOrder = 'desc' } = queryResult.data;
 
-    // If stage is specified, use stage query
-    if (stage) {
-      const deals = await queryDealsByStage(stage as DealStage);
+    const result = await getDeals(
+      stage ? { stage: stage as DealStage } : undefined,
+      { limit, offset },
+      { sortBy: sortBy as keyof Deal, sortOrder }
+    );
 
-      // Apply pagination and sorting in-memory (for now - query functions will be enhanced later)
-      const sorted = deals.sort((a, b) => {
-        const aVal = a[sortBy as keyof Deal];
-        const bVal = b[sortBy as keyof Deal];
-        if (!aVal || !bVal) return 0;
-        if (sortOrder === 'asc') return aVal > bVal ? 1 : -1;
-        return aVal < bVal ? 1 : -1;
-      });
-
-      const paginated = sorted.slice(offset, offset + limit);
-
-      return c.json({
-        deals: paginated,
-        total: deals.length,
-        limit,
-        offset,
-      });
-    }
-
-    // If no stage filter, return empty for now (queryDeals function will be added later)
-    return c.json({
-      deals: [],
-      total: 0,
-      limit,
-      offset,
-    });
+    return c.json(result);
   } catch (error) {
     console.error('Error listing deals:', error);
     return c.json(errorResponse('Failed to list deals', 500, error instanceof Error ? error.message : String(error)), 500);
@@ -146,34 +104,8 @@ dealsRoutes.get('/', async (c) => {
 // GET /api/deals/stats - Get deal statistics
 dealsRoutes.get('/stats', async (c) => {
   try {
-    // Get counts by stage
-    const stages: DealStage[] = [
-      DealStage.INGESTION,
-      DealStage.ENRICHMENT,
-      DealStage.SCOPING,
-      DealStage.PROPOSAL,
-      DealStage.CRM_SYNC,
-      DealStage.COMPLETED,
-      DealStage.FAILED,
-    ];
-
-    const stats = await Promise.all(
-      stages.map(async (stage) => {
-        try {
-          const deals = await queryDealsByStage(stage);
-          return { stage, count: deals.length };
-        } catch {
-          return { stage, count: 0 };
-        }
-      })
-    );
-
-    const total = stats.reduce((sum, s) => sum + s.count, 0);
-
-    return c.json({
-      total,
-      byStage: stats,
-    });
+    const stats = await getDealStats();
+    return c.json(stats);
   } catch (error) {
     console.error('Error getting deal stats:', error);
     return c.json(errorResponse('Failed to get deal statistics', 500, error instanceof Error ? error.message : String(error)), 500);
@@ -193,14 +125,26 @@ dealsRoutes.get('/search/similar', async (c) => {
 
     const similarDeals = await searchSimilarDeals(q, limit);
 
-    return c.json({
-      query: q,
-      deals: similarDeals,
-      count: similarDeals.length,
-    });
+    return c.json(similarDeals);
   } catch (error) {
     console.error('Error searching similar deals:', error);
     return c.json(errorResponse('Failed to search similar deals', 500, error instanceof Error ? error.message : String(error)), 500);
+  }
+});
+
+// GET /api/deals/stage/:stage - Get deals by stage
+dealsRoutes.get('/stage/:stage', async (c) => {
+  try {
+    const stage = c.req.param('stage');
+    const validStages = ['ingestion', 'enrichment', 'scoping', 'proposal', 'crm_sync', 'completed', 'failed'];
+    if (!validStages.includes(stage)) {
+      return c.json(errorResponse('Invalid stage', 400), 400);
+    }
+    const result = await queryDealsByStage(stage as DealStage);
+    return c.json(result);
+  } catch (error) {
+    console.error('Error querying deals by stage:', error);
+    return c.json(errorResponse('Failed to query deals by stage', 500, error instanceof Error ? error.message : String(error)), 500);
   }
 });
 
@@ -262,12 +206,6 @@ dealsRoutes.put('/:id', async (c) => {
       return c.json(errorResponse('Invalid update data', 400, validationResult.error.errors), 400);
     }
 
-    // Check if deal exists
-    const existingDeal = await getDeal(id);
-    if (!existingDeal) {
-      return c.json(errorResponse('Deal not found', 404), 404);
-    }
-
     const updates = validationResult.data;
     const updatedDeal = await updateDeal(id, updates);
 
@@ -294,12 +232,6 @@ dealsRoutes.patch('/:id/stage', async (c) => {
       return c.json(errorResponse('Invalid stage update data', 400, validationResult.error.errors), 400);
     }
 
-    // Check if deal exists
-    const existingDeal = await getDeal(id);
-    if (!existingDeal) {
-      return c.json(errorResponse('Deal not found', 404), 404);
-    }
-
     const { stage, reason } = validationResult.data;
     const updatedDeal = await updateDealStage(id, stage as DealStage, reason);
 
@@ -319,19 +251,10 @@ dealsRoutes.delete('/:id', async (c) => {
       return c.json(errorResponse('Invalid deal ID', 400), 400);
     }
 
-    // Check if deal exists
-    const existingDeal = await getDeal(id);
-    if (!existingDeal) {
-      return c.json(errorResponse('Deal not found', 404), 404);
-    }
-
     // Soft delete by setting stage to 'failed'
     const deletedDeal = await updateDealStage(id, DealStage.FAILED, 'Deleted via API');
 
-    return c.json({
-      message: 'Deal deleted successfully',
-      deal: deletedDeal,
-    });
+    return c.json(deletedDeal);
   } catch (error) {
     console.error('Error deleting deal:', error);
     return c.json(errorResponse('Failed to delete deal', 500, error instanceof Error ? error.message : String(error)), 500);

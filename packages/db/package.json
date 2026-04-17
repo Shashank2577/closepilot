@@ -13,7 +13,7 @@
     "db:migrate": "drizzle-kit migrate",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting not configured yet'",
-    "test": "echo 'Tests not configured yet'"
+    "test": "vitest run"
   },
   "dependencies": {
     "@closepilot/core": "workspace:*",
