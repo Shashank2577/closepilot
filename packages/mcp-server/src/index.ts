@@ -9,6 +9,7 @@ import {
 
 import { dealStoreToolDefinitions, handleDealStoreToolCall, registerDealStoreTools } from './tools/deal-store.js';
 import { registerGmailTools, gmailToolHandlers, gmailToolDefinitions } from './tools/gmail.js';
+import { driveToolHandlers } from './tools/drive.js';
 import { registerCalendarTools } from './tools/calendar.js';
 import { registerDriveTools } from './tools/drive.js';
 
@@ -473,16 +474,14 @@ async function main() {
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       }
 
-      // Drive tools (stubs)
+      // Drive tools
       if (name.startsWith('drive_')) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Tool ${name} not yet implemented - see J-104`,
-            },
-          ],
-        };
+        const toolName = name.replace('drive_', '');
+        const handler = driveToolHandlers[toolName];
+        if (handler) {
+          const result = await handler(args);
+          return result;
+        }
       }
 
       return {
