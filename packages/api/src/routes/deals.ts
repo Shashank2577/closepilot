@@ -91,7 +91,7 @@ dealsRoutes.get('/', async (c) => {
     const result = await getDeals(
       stage ? { stage: stage as DealStage } : undefined,
       { limit, offset },
-      { sortBy: sortBy as keyof Deal, sortOrder }
+      { sortBy: sortBy as 'createdAt' | 'updatedAt' | 'leadName', sortOrder }
     );
 
     return c.json(result);

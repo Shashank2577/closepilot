@@ -135,7 +135,7 @@ export const dealStoreToolDefinitions = [
   }
 ];
 
-export async function handleDealStoreToolCall(name: string, args: any) {
+export async function handleDealStoreToolCall(name: string, args: any): Promise<{ content: Array<{ type: string; text: string }> } | null> {
   switch (name) {
     case 'create_deal':
       return { content: [{ type: 'text', text: JSON.stringify(await createDeal(args.input)) }] };

@@ -51,9 +51,9 @@ describe('handleDealStoreToolCall', () => {
       });
 
       expect(result).not.toBeNull();
-      expect(result.content).toHaveLength(1);
-      expect(result.content[0].type).toBe('text');
-      const parsed = JSON.parse(result.content[0].text);
+      expect(result!.content).toHaveLength(1);
+      expect(result!.content[0].type).toBe('text');
+      const parsed = JSON.parse(result!.content[0].text);
       expect(parsed.leadEmail).toBe('test@example.com');
       expect(createDeal).toHaveBeenCalledWith({
         leadEmail: 'test@example.com',
@@ -70,7 +70,7 @@ describe('handleDealStoreToolCall', () => {
       const result = await handleDealStoreToolCall('get_deal', { dealId: '1' });
 
       expect(result).not.toBeNull();
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(result!.content[0].text);
       expect(parsed.id).toBe(1);
       expect(getDeal).toHaveBeenCalledWith('1');
     });
@@ -81,7 +81,7 @@ describe('handleDealStoreToolCall', () => {
       const result = await handleDealStoreToolCall('get_deal', { dealId: '999' });
 
       expect(result).not.toBeNull();
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(result!.content[0].text);
       expect(parsed).toBeNull();
     });
   });
@@ -98,7 +98,7 @@ describe('handleDealStoreToolCall', () => {
       });
 
       expect(result).not.toBeNull();
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(result!.content[0].text);
       expect(parsed.stage).toBe('scoping');
       expect(updateDealStage).toHaveBeenCalledWith('1', 'scoping', 'Ready for scoping');
     });
@@ -113,7 +113,7 @@ describe('handleDealStoreToolCall', () => {
       });
 
       expect(result).not.toBeNull();
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(result!.content[0].text);
       expect(parsed.stage).toBe('enrichment');
     });
   });
@@ -128,7 +128,7 @@ describe('handleDealStoreToolCall', () => {
       });
 
       expect(result).not.toBeNull();
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(result!.content[0].text);
       expect(parsed).toHaveLength(2);
       expect(parsed[0].stage).toBe('ingestion');
       expect(queryDealsByStage).toHaveBeenCalledWith('ingestion');
@@ -142,7 +142,7 @@ describe('handleDealStoreToolCall', () => {
       });
 
       expect(result).not.toBeNull();
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(result!.content[0].text);
       expect(parsed).toHaveLength(0);
     });
   });

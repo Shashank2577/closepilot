@@ -11,10 +11,10 @@ export function ApprovalBadge({ status }: ApprovalBadgeProps) {
     return null;
   }
 
-  const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
-    pending: 'default',
-    approved: 'secondary',
-    rejected: 'destructive',
+  const variants: Record<string, 'danger' | 'success' | 'warning' | 'info'> = {
+    pending: 'warning',
+    approved: 'success',
+    rejected: 'danger',
   };
 
   const labels: Record<string, string> = {
