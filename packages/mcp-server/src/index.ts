@@ -54,8 +54,7 @@ async function main() {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
-        ...dealStoreToolDefinitions,
-        // Calendar tools
+        // Deal Store tools (stubs - see J-101)
         {
           name: 'create_calendar_event',
           description: 'Create a new calendar event with attendees',
@@ -204,122 +203,143 @@ async function main() {
             required: ['templateId', 'dealId', 'values', 'outputFormat'],
           },
         },
+        // Calendar tools
         {
-          name: 'get_document',
-          description: 'Get generated document by ID',
-          inputSchema: { type: 'object', properties: { documentId: { type: 'string' } }, required: ['documentId'] },
-        },
-        {
-          name: 'update_document_status',
-          description: 'Update document status',
+          name: 'create_calendar_event',
+          description: 'Create a new calendar event with attendees',
           inputSchema: {
             type: 'object',
             properties: {
-              documentId: { type: 'string' },
-              status: { type: 'string', enum: ['draft', 'pending_review', 'approved', 'rejected'] },
+              title: { type: 'string', description: 'Event title' },
+              description: { type: 'string', description: 'Event description' },
+              startTime: { type: 'string', description: 'Start time (ISO 8601)' },
+              endTime: { type: 'string', description: 'End time (ISO 8601)' },
+              attendees: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Attendee email addresses',
+              },
+              location: { type: 'string', description: 'Event location' },
             },
-            required: ['documentId', 'status'],
+            required: ['title', 'startTime', 'endTime', 'attendees'],
           },
         },
         {
-          name: 'create_drive_folder',
-          description: 'Create Drive folder',
-          inputSchema: { type: 'object', properties: { name: { type: 'string' }, parentId: { type: 'string' } }, required: ['name'] },
-        },
-        {
-          name: 'list_drive_folder',
-          description: 'List documents in a Drive folder',
-          inputSchema: { type: 'object', properties: { folderId: { type: 'string' } }, required: ['folderId'] },
-        },
-        {
-          name: 'copy_drive_document',
-          description: 'Copy a Drive document',
-          inputSchema: {
-            type: 'object',
-            properties: { documentId: { type: 'string' }, destinationFolderId: { type: 'string' }, newTitle: { type: 'string' } },
-            required: ['documentId'],
-          },
-        },
-        {
-          name: 'share_drive_document',
-          description: 'Share a Drive document',
+          name: 'get_calendar_event',
+          description: 'Get a calendar event by ID',
           inputSchema: {
             type: 'object',
             properties: {
-              documentId: { type: 'string' },
-              emails: { type: 'array', items: { type: 'string' } },
-              role: { type: 'string', enum: ['reader', 'writer', 'commenter'] },
+              eventId: { type: 'string', description: 'Event ID' },
             },
-            required: ['documentId', 'emails', 'role'],
+            required: ['eventId'],
           },
         },
         {
-          name: 'get_drive_download_url',
-          description: 'Get document download URL',
-          inputSchema: { type: 'object', properties: { documentId: { type: 'string' } }, required: ['documentId'] },
-        },
-        // Gmail tools
-        {
-          name: 'search_emails',
-          description: 'Search emails in Gmail',
+          name: 'update_calendar_event',
+          description: 'Update a calendar event',
           inputSchema: {
             type: 'object',
             properties: {
-              query: { type: 'string' },
-              from: { type: 'string' },
-              to: { type: 'string' },
-              subject: { type: 'string' },
-              hasAttachment: { type: 'boolean' },
-              label: { type: 'string' },
-              after: { type: 'string' },
-              before: { type: 'string' },
+              eventId: { type: 'string', description: 'Event ID' },
+              updates: {
+                type: 'object',
+                description: 'Event updates',
+              },
             },
+            required: ['eventId', 'updates'],
           },
         },
         {
-          name: 'get_thread',
-          description: 'Get an email thread by ID',
-          inputSchema: { type: 'object', properties: { threadId: { type: 'string' } }, required: ['threadId'] },
-        },
-        {
-          name: 'get_message',
-          description: 'Get an email message by ID',
-          inputSchema: { type: 'object', properties: { messageId: { type: 'string' } }, required: ['messageId'] },
-        },
-        {
-          name: 'send_email',
-          description: 'Send an email',
+          name: 'delete_calendar_event',
+          description: 'Delete a calendar event',
           inputSchema: {
             type: 'object',
             properties: {
-              to: { type: 'array', items: { type: 'string' } },
-              subject: { type: 'string' },
-              body: { type: 'string' },
-              cc: { type: 'array', items: { type: 'string' } },
-              threadId: { type: 'string' },
+              eventId: { type: 'string', description: 'Event ID' },
             },
-            required: ['to', 'subject', 'body'],
+            required: ['eventId'],
           },
         },
         {
-          name: 'extract_email_context',
-          description: 'Extract context from an email using AI',
-          inputSchema: { type: 'object', properties: { messageId: { type: 'string' } }, required: ['messageId'] },
+          name: 'check_availability',
+          description: 'Check availability for attendees in a time window',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              attendees: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Attendee email addresses',
+              },
+              windowStart: { type: 'string', description: 'Window start (ISO 8601)' },
+              windowEnd: { type: 'string', description: 'Window end (ISO 8601)' },
+              duration: { type: 'number', description: 'Duration in minutes' },
+            },
+            required: ['attendees', 'windowStart', 'windowEnd', 'duration'],
+          },
         },
         {
-          name: 'get_recent_threads',
-          description: 'Get recent email threads',
-          inputSchema: { type: 'object', properties: { limit: { type: 'number' }, pageToken: { type: 'string' } } },
+          name: 'schedule_meeting',
+          description: 'Schedule a meeting by finding the best time',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'Meeting title' },
+              description: { type: 'string', description: 'Meeting description' },
+              duration: { type: 'number', description: 'Duration in minutes' },
+              attendees: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Attendee email addresses',
+              },
+              proposedTimes: {
+                type: 'array',
+                description: 'Proposed time slots',
+                items: {
+                  type: 'object',
+                  properties: {
+                    start: { type: 'string', description: 'Start time (ISO 8601)' },
+                    end: { type: 'string', description: 'End time (ISO 8601)' },
+                  },
+                },
+              },
+              location: { type: 'string', description: 'Meeting location' },
+            },
+            required: ['title', 'duration', 'attendees', 'proposedTimes'],
+          },
         },
         {
-          name: 'watch_emails',
-          description: 'Watch emails (push notifications)',
-          inputSchema: { type: 'object', properties: { topic: { type: 'string' } }, required: ['topic'] },
+          name: 'list_upcoming_events',
+          description: 'List upcoming calendar events',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              startDate: { type: 'string', description: 'Start date (ISO 8601)' },
+              endDate: { type: 'string', description: 'End date (ISO 8601)' },
+              maxResults: { type: 'number', description: 'Maximum results' },
+            },
+            required: ['startDate'],
+          },
         },
         {
-          name: 'stop_watching',
-          description: 'Stop watching emails',
-          inputSchema: { type: 'object', properties: {} },
+          name: 'find_available_slots',
+          description: 'Find available time slots for a meeting',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              attendees: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Attendee email addresses',
+              },
+              windowStart: { type: 'string', description: 'Window start (ISO 8601)' },
+              windowEnd: { type: 'string', description: 'Window end (ISO 8601)' },
+              duration: { type: 'number', description: 'Duration in minutes' },
+              count: { type: 'number', description: 'Number of slots to return' },
+            },
+            required: ['attendees', 'windowStart', 'windowEnd', 'duration'],
+          },
         },
       ],
     };
@@ -330,63 +350,6 @@ async function main() {
     const { name, arguments: args = {} } = request.params;
 
     try {
-      const dealStoreResult = await handleDealStoreToolCall(name, args);
-      if (dealStoreResult) {
-        return dealStoreResult;
-      }
-
-      // Drive tools
-      if (name === 'list_templates') {
-        const { listTemplates } = await import('./tools/drive.js');
-        const content = await listTemplates(args?.type as string | undefined);
-        return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-      }
-      if (name === 'get_template') {
-        const { getTemplate } = await import('./tools/drive.js');
-        const content = await getTemplate(args?.templateId as string);
-        return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-      }
-      if (name === 'generate_document') {
-        const { generateDocument } = await import('./tools/drive.js');
-        const content = await generateDocument(args as any);
-        return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-      }
-      if (name === 'get_document') {
-        const { getDocument } = await import('./tools/drive.js');
-        const content = await getDocument(args?.documentId as string);
-        return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-      }
-      if (name === 'update_document_status') {
-        const { updateDocumentStatus } = await import('./tools/drive.js');
-        const content = await updateDocumentStatus(args?.documentId as string, args?.status as any);
-        return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-      }
-      if (name === 'create_drive_folder') {
-        const { createFolder } = await import('./tools/drive.js');
-        const content = await createFolder(args?.name as string, args?.parentId as string | undefined);
-        return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-      }
-      if (name === 'list_drive_folder') {
-        const { listFolder } = await import('./tools/drive.js');
-        const content = await listFolder(args?.folderId as string);
-        return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-      }
-      if (name === 'copy_drive_document') {
-        const { copyDocument } = await import('./tools/drive.js');
-        const content = await copyDocument(args?.documentId as string, args?.destinationFolderId as string | undefined, args?.newTitle as string | undefined);
-        return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-      }
-      if (name === 'share_drive_document') {
-        const { shareDocument } = await import('./tools/drive.js');
-        await shareDocument(args?.documentId as string, args?.emails as string[], args?.role as any);
-        return { content: [{ type: 'text', text: JSON.stringify({ success: true }) }] };
-      }
-      if (name === 'get_drive_download_url') {
-        const { getDownloadUrl } = await import('./tools/drive.js');
-        const content = await getDownloadUrl(args?.documentId as string);
-        return { content: [{ type: 'text', text: JSON.stringify(content) }] };
-      }
-
       // Calendar tools
       if (name === 'create_calendar_event') {
         const { createEvent } = await import('./tools/calendar.js');
@@ -493,31 +456,59 @@ async function main() {
         return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       }
 
-
-      // Gmail tools
-      if (gmailToolHandlers[name]) {
-        const parsedArgs = { ...args };
-        if (parsedArgs && typeof parsedArgs === 'object') {
-          if ('after' in parsedArgs && typeof parsedArgs.after === 'string') {
-            (parsedArgs as any).after = new Date(parsedArgs.after as string);
-          }
-          if ('before' in parsedArgs && typeof parsedArgs.before === 'string') {
-            (parsedArgs as any).before = new Date(parsedArgs.before as string);
-          }
-        }
-        const result = await gmailToolHandlers[name](parsedArgs);
+      // Deal Store tools (stubs)
+      if (name === 'create_deal' || name === 'get_deal' || name === 'update_deal_stage') {
         return {
-          content: [{ type: 'text', text: typeof result === 'object' ? JSON.stringify(result) : String(result) }],
+          content: [
+            {
+              type: 'text',
+              text: `Tool ${name} not yet implemented - see J-101`,
+            },
+          ],
+        };
+      }
+
+      // Gmail tools (stubs)
+      if (name.startsWith('gmail_')) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool ${name} not yet implemented - see J-102`,
+            },
+          ],
+        };
+      }
+
+      // Drive tools (stubs)
+      if (name.startsWith('drive_')) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Tool ${name} not yet implemented - see J-104`,
+            },
+          ],
         };
       }
 
       return {
-        content: [{ type: 'text', text: `Unknown tool: ${name}` }],
+        content: [
+          {
+            type: 'text',
+            text: `Unknown tool: ${name}`,
+          },
+        ],
         isError: true,
       };
     } catch (error: any) {
       return {
-        content: [{ type: 'text', text: `Error executing tool ${name}: ${error.message}` }],
+        content: [
+          {
+            type: 'text',
+            text: `Error executing tool ${name}: ${error.message}`,
+          },
+        ],
         isError: true,
       };
     }

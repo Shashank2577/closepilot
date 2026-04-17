@@ -14,7 +14,9 @@ export class GmailTools {
   constructor(private client: DealStoreClient) {}
 
   /**
-   * Search emails
+   * Search emails with advanced filters
+   * @param query Gmail query with filters (from, to, subject, hasAttachment, labels, date range)
+   * @returns Array of matching email messages
    */
   async searchEmails(query: GmailQuery): Promise<{ messages: EmailMessage[], nextPageToken?: string }> {
     const response = await this.client.callTool('search_emails', {
@@ -26,7 +28,7 @@ export class GmailTools {
       label: query.label,
       after: query.after?.toISOString(),
       before: query.before?.toISOString(),
-      pageToken: query.pageToken,
+      maxResults: 50,
     });
     // The server returns JSON text in response.content[0].text
     if (response.content && response.content.length > 0 && response.content[0].type === 'text') {
@@ -41,7 +43,9 @@ export class GmailTools {
   }
 
   /**
-   * Get a thread by ID
+   * Get a thread by ID with all messages
+   * @param threadId Gmail thread ID
+   * @returns Thread with all messages and participants
    */
   async getThread(threadId: string): Promise<Thread | null> {
     const response = await this.client.callTool('get_thread', { threadId });
@@ -57,6 +61,8 @@ export class GmailTools {
 
   /**
    * Get an email message by ID
+   * @param messageId Gmail message ID
+   * @returns Email message with full details
    */
   async getMessage(messageId: string): Promise<EmailMessage | null> {
     const response = await this.client.callTool('get_message', { messageId });
@@ -72,6 +78,8 @@ export class GmailTools {
 
   /**
    * Send an email
+   * @param params Email parameters (to, subject, body, cc, threadId for replies)
+   * @returns Sent email message
    */
   async sendEmail(params: {
     to: string[];
@@ -88,7 +96,9 @@ export class GmailTools {
   }
 
   /**
-   * Extract context from an email for lead qualification
+   * Extract context from an email for lead qualification using Claude AI
+   * @param messageId Gmail message ID
+   * @returns Extracted lead qualification context (requirements, budget, timeline, urgency)
    */
   async extractEmailContext(messageId: string): Promise<EmailContext> {
     const response = await this.client.callTool('extract_email_context', {
@@ -102,6 +112,8 @@ export class GmailTools {
 
   /**
    * Get recent threads from inbox
+   * @param limit Maximum number of threads to retrieve (default: 20)
+   * @returns Array of recent threads
    */
   async getRecentThreads(limit = 20, pageToken?: string): Promise<{ threads: Thread[], nextPageToken?: string }> {
     const response = await this.client.callTool('get_recent_threads', { limit, pageToken });
@@ -116,7 +128,9 @@ export class GmailTools {
   }
 
   /**
-   * Watch for new emails (set up push notifications)
+   * Watch for new emails (set up push notifications via Google Cloud Pub/Sub)
+   * @param topic Google Cloud Pub/Sub topic name for push notifications
+   * @returns historyId for tracking changes
    */
   async watchEmails(topic: string): Promise<string> {
     const response = await this.client.callTool('watch_emails', { topic });

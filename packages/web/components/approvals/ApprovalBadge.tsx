@@ -11,10 +11,10 @@ export function ApprovalBadge({ status }: ApprovalBadgeProps) {
     return null;
   }
 
-  const variants: Record<string, 'warning' | 'success' | 'danger'> = {
-    pending: 'warning',
-    approved: 'success',
-    rejected: 'danger',
+  const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
+    pending: 'default',
+    approved: 'secondary',
+    rejected: 'destructive',
   };
 
   const labels: Record<string, string> = {
@@ -24,7 +24,7 @@ export function ApprovalBadge({ status }: ApprovalBadgeProps) {
   };
 
   return (
-    <Badge variant={variants[status] || 'info'}>
+    <Badge variant={variants[status] || 'default'}>
       {labels[status] || status}
     </Badge>
   );
