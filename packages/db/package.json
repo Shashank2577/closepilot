@@ -9,19 +9,23 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "db:studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate:pg",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
+    "migrate:run": "node dist/migrate.js",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting not configured yet'",
-    "test": "echo 'Tests not configured yet'"
+    "test": "vitest run src/"
   },
   "dependencies": {
     "@closepilot/core": "workspace:*",
     "drizzle-orm": "^0.29.3",
-    "postgres": "^3.4.3"
+    "postgres": "^3.4.3",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
+    "@types/pg": "^8.11.0",
     "drizzle-kit": "^0.20.9",
     "typescript": "^5.3.3",
     "vitest": "^4.1.4"

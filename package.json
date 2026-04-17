@@ -14,7 +14,8 @@
     "mcp:dev": "pnpm --filter @closepilot/mcp-server dev",
     "api:dev": "pnpm --filter @closepilot/api dev",
     "web:dev": "pnpm --filter @closepilot/web dev",
-    "typecheck": "pnpm --filter \"@closepilot/*\" --parallel tsc --noEmit"
+    "typecheck": "pnpm --filter \"@closepilot/*\" --parallel tsc --noEmit",
+    "lint:docs": "markdownlint-cli2 \"docs/**/*.md\""
   },
   "keywords": [
     "b2b",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^20.11.0",
+    "markdownlint-cli2": "^0.22.0",
     "typescript": "^5.3.3",
     "vitest": "^4.1.4"
   },

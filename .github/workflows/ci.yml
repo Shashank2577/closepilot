@@ -31,6 +31,8 @@ jobs:
 
       - name: Run tests
         run: pnpm test || exit 0  # Tests may be stubs
+      - name: Lint Documentation
+        run: pnpm lint:docs
 
       - name: Run linting
         run: pnpm lint || exit 0  # Linting may not be configured
