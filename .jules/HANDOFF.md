@@ -1,19 +1,16 @@
-# HANDOFF
+# J-W1-DB Optimization Handoff
 
-## Overview
-Successfully implemented the architecture improvements and standardizations specified in `J-W1-CORE`:
-- Added abstract `BaseAgent` class representing the deal flow pipeline agent lifecycle (`packages/core/src/agent.ts`).
-- Integrated structured JSON logger `ClosepilotLogger` across agents via `packages/core/src/logger.ts`.
-- Substituted distributed environment variable accesses via `process.env` in major agents with `SecretProvider` singleton logic.
-- Updated typing `AgentInput` to inject `logger` reference, and `AgentOutput` now requires pipeline operators to receive a `durationMs` footprint.
-- All new functionality strictly tested via `vitest` unit-tests.
+## Completed Work
+1. **Schema Upgrades**: Converted `companyResearch`, `prospectResearch`, `projectScope`, and `proposal` from `text` to `jsonb`.
+2. **GIN Indexes**: Added GIN indexes to `companyResearch` and `prospectResearch` using `drizzle-orm` v0.29 syntax (`.using(sql'gin')`).
+3. **Query Optimization**: Refactored `getDealStats` to use a SQL-level `GROUP BY` and `COUNT` query rather than an in-memory loop.
+4. **Pagination**: Implemented pagination parameters (`limit`, `offset`) and total counting (`totalCount`) in the `getDeals` query.
+5. **API Updates**: Addressed the change in the `getDeals` signature by extracting `data` where necessary from the return structure inside `@closepilot/web/lib/api.ts` so the frontend isn't broken.
+6. **Testing**: Mocked the multi-stage query builder logic in `packages/db/src/queries/__tests__/deals.test.ts` to successfully return tests with the new total count behavior and SQL-level mock structure.
 
-## How to Test
-1. Make sure to `pnpm install` dependencies.
-2. Build the dependencies: `cd packages/core && pnpm build && cd ../..`.
-3. Check types: `pnpm --filter "@closepilot/core" run typecheck`.
-4. Validate test executions: `cd packages/core && pnpm test`.
+## Deviations / Notes
+- *Docker / db:push skipped*: Because the task instructed me to work purely on the typescript-level changes without running an actual PostgreSQL database instance, I've verified the models typecheck. Note that the DB is mocked natively by our test suite.
+- Web/API tests that exist independently of my changes (such as OAuth generatePKCE misexports) were failing prior to this operation.
 
-## Note on Deviations
-- `durationMs` logic required adjusting `BaseAgent.execute` to permit subclasses to omit the argument on execution so `BaseAgent.run` can automatically compute and append it.
-- `process.env` properties specific to dynamic context strings (e.g. `process.env[\`${context.crmSystem.toUpperCase()}_API_KEY\`]`) in `packages/agents/crm-sync/src/index.ts` remain for future refactors into specific user/org level secret stores (or left as `process.env` due to the dynamic string requirement).
+## How to Verify
+Run `pnpm test` in the db directory: `cd packages/db && pnpm test`.
