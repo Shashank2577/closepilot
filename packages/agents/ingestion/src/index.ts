@@ -15,9 +15,10 @@
  * Usage:
  * ```typescript
  * import { startIngestionAgent } from '@closepilot/agents-ingestion';
+ * import { secrets } from '@closepilot/core';
  *
  * await startIngestionAgent({
- *   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+ *   anthropicApiKey: secrets.getAnthropicKey(),
  *   pollIntervalMinutes: 5,
  * });
  * ```
@@ -35,6 +36,7 @@ export type { MonitorConfig, ProcessingStats } from './monitor.js';
 
 import { GmailMonitor, createGmailMonitor } from './monitor.js';
 import { GmailTools, DealStoreTools, DealStoreClient } from '@closepilot/mcp-client';
+import { secrets } from '@closepilot/core';
 
 /**
  * Start the Ingestion Agent
@@ -85,11 +87,7 @@ export async function startIngestionAgent(config: {
  */
 export async function main(): Promise<void> {
   try {
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicApiKey) {
-      console.error('Error: ANTHROPIC_API_KEY environment variable is required');
-      process.exit(1);
-    }
+    const anthropicApiKey = secrets.getAnthropicKey();
 
     const pollInterval = parseInt(process.env.POLL_INTERVAL_MINUTES || '5', 10);
     const gmailQuery = process.env.GMAIL_QUERY;

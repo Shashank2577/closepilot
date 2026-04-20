@@ -1,4 +1,4 @@
-import { DealStage } from '@closepilot/core';
+import { DealStage, secrets } from '@closepilot/core';
 import type { Deal, AgentType, CrmSyncContext } from '@closepilot/core';
 import { DealStoreTools } from '@closepilot/mcp-client';
 import { HubSpotAdapter } from './hubspot-adapter.js';
@@ -87,7 +87,7 @@ export class CRMSyncAgent {
   private async initializeCRMAdapter(context: CrmSyncContext): Promise<CRMAdapter> {
     const config: CRMConfig = {
       type: context.crmSystem,
-      apiKey: process.env[`${context.crmSystem.toUpperCase()}_API_KEY`],
+      apiKey: process.env[`${context.crmSystem.toUpperCase()}_API_KEY`], // Leaving these as process.env for now because they are dynamic and not currently in SecretProvider
       oauthToken: process.env[`${context.crmSystem.toUpperCase()}_OAUTH_TOKEN`],
       environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
       retryConfig: {
