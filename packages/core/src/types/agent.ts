@@ -1,4 +1,5 @@
 import { Deal, DealStage } from './deal';
+import type { ClosepilotLogger } from '../logger';
 
 /**
  * Input for agents to process a deal
@@ -8,6 +9,7 @@ export interface AgentInput<T = unknown> {
   deal: Deal;
   context: T;
   metadata?: AgentMetadata;
+  logger?: ClosepilotLogger;
 }
 
 /**
@@ -22,6 +24,7 @@ export interface AgentOutput<T = unknown> {
   requiresApproval: boolean;
   approvalReason?: string;
   metadata?: AgentMetadata;
+  durationMs: number;
 }
 
 /**
