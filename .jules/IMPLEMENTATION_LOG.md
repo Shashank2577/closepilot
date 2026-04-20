@@ -1,14 +1,8 @@
-# IMPLEMENTATION LOG
+# Implementation Log
 
-## Actions Taken
-- Created `BaseAgent` class with lifecycle methods in `packages/core/src/agent.ts`.
-- Created structured JSON `ClosepilotLogger` controlled by `LOG_LEVEL` environment variable in `packages/core/src/logger.ts`.
-- Created centralized `SecretProvider` singleton in `packages/core/src/secrets.ts`.
-- Updated `AgentInput` to include `logger` and `AgentOutput` to include `durationMs` in `packages/core/src/types/agent.ts`.
-- Added unit tests for `BaseAgent`, `ClosepilotLogger`, and `SecretProvider`.
-- Refactored `crm-sync` and `ingestion` agents to use the new `SecretProvider`. Kept dynamic CRM API keys via `process.env` since `SecretProvider` is designed for system-wide static credentials.
-- Restored `pnpm-lock.yaml` which got dirtied by `vitest` dependency addition to prevent CI failures.
-- Fixed `durationMs` requirement in `AgentOutput` by making `execute` method return `Omit<TOutput, 'durationMs'>` allowing subclasses to execute correctly while `run` manages the `durationMs`.
-
-## Deviations from Plan
-- Adjusted `durationMs` to be partially omitted in sub-agent `execute` definitions. Without this change, existing subclasses would fail to type check unless they erroneously returned dummy `durationMs` property within `execute`.
+- Created `packages/api/src/lib/errors.ts` to host the common `errorResponse` function returning `{ error, code, details }`.
+- Refactored `deals.ts` to import `errorResponse`, replace `z.enum` with `z.nativeEnum(DealStage)`, and explicitly set all handler returns to `Promise<Response>`.
+- Refactored `approvals.ts` and `activities.ts` to use `errorResponse` and explicitly type returns.
+- Updated `deals.test.ts` to check against the normalized error shapes and use `DealStage` enum references correctly.
+- Addressed code review feedback: deleted throwaway JS script files (`update_deals.js` etc.) and fixed missing `DealStage` imports in the tests. Reverted unintended OS lockfile changes in `pnpm-lock.yaml`.
+- Verified typechecking and vitest passing for `@closepilot/api`.

@@ -5,6 +5,7 @@ import {
   getRecentActivities,
 } from '@closepilot/db';
 import type { Activity } from '@closepilot/db';
+import { errorResponse } from '../lib/errors.js';
 
 /**
  * Activity streaming endpoints
@@ -35,7 +36,7 @@ function broadcastActivity(activity: Activity) {
  * GET /api/activities/stream
  * SSE endpoint for real-time activity streaming
  */
-activitiesRoutes.get('/stream', async (c) => {
+activitiesRoutes.get('/stream', async (c): Promise<Response> => {
   const dealId = c.req.query('dealId');
 
   // Create a readable stream for SSE
@@ -89,11 +90,11 @@ activitiesRoutes.get('/stream', async (c) => {
  * GET /api/activities/deal/:dealId
  * Get all activities for a specific deal
  */
-activitiesRoutes.get('/deal/:dealId', async (c) => {
+activitiesRoutes.get('/deal/:dealId', async (c): Promise<Response> => {
   const dealId = parseInt(c.req.param('dealId'));
 
   if (isNaN(dealId)) {
-    return c.json({ error: 'Invalid deal ID' }, 400);
+    return c.json(errorResponse('Invalid deal ID'), 400);
   }
 
   try {
@@ -101,7 +102,7 @@ activitiesRoutes.get('/deal/:dealId', async (c) => {
     return c.json(activities);
   } catch (error) {
     console.error('Error fetching activities:', error);
-    return c.json({ error: 'Failed to fetch activities' }, 500);
+    return c.json(errorResponse('Failed to fetch activities'), 500);
   }
 });
 
@@ -109,11 +110,11 @@ activitiesRoutes.get('/deal/:dealId', async (c) => {
  * GET /api/activities/recent
  * Get recent activities across all deals
  */
-activitiesRoutes.get('/recent', async (c) => {
+activitiesRoutes.get('/recent', async (c): Promise<Response> => {
   const limit = parseInt(c.req.query('limit') || '50');
 
   if (limit < 1 || limit > 500) {
-    return c.json({ error: 'Limit must be between 1 and 500' }, 400);
+    return c.json(errorResponse('Limit must be between 1 and 500'), 400);
   }
 
   try {
@@ -121,7 +122,7 @@ activitiesRoutes.get('/recent', async (c) => {
     return c.json(activities);
   } catch (error) {
     console.error('Error fetching recent activities:', error);
-    return c.json({ error: 'Failed to fetch recent activities' }, 500);
+    return c.json(errorResponse('Failed to fetch recent activities'), 500);
   }
 });
 
@@ -129,17 +130,14 @@ activitiesRoutes.get('/recent', async (c) => {
  * POST /api/activities
  * Create a new activity (called by agents)
  */
-activitiesRoutes.post('/', async (c) => {
+activitiesRoutes.post('/', async (c): Promise<Response> => {
   try {
     const data = await c.req.json();
 
     // Validate required fields
     if (!data.dealId || !data.agentType || !data.activityType || !data.description) {
       return c.json(
-        {
-          error: 'Missing required fields',
-          required: ['dealId', 'agentType', 'activityType', 'description']
-        },
+        errorResponse('Missing required fields', undefined, { required: ['dealId', 'agentType', 'activityType', 'description'] }),
         400
       );
     }
@@ -159,6 +157,6 @@ activitiesRoutes.post('/', async (c) => {
     return c.json(activity, 201);
   } catch (error) {
     console.error('Error creating activity:', error);
-    return c.json({ error: 'Failed to create activity' }, 500);
+    return c.json(errorResponse('Failed to create activity'), 500);
   }
 });
