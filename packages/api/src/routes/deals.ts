@@ -5,6 +5,7 @@ import { DealStage, UserRole } from '@closepilot/core';
 import { errorResponse } from '../lib/errors.js';
 import { requireRole } from '../middleware/auth.js';
 import type { AppContext } from '../types.js';
+import { dealsCreatedCounter } from '../metrics.js';
 import {
   getDeals,
   getDealStats,
@@ -182,6 +183,7 @@ dealsRoutes.post('/', async (c): Promise<Response> => {
 
     const dealData = validationResult.data;
     const newDeal = await createDeal(dealData);
+    dealsCreatedCounter.inc();
 
     return c.json(newDeal, 201);
   } catch (error) {

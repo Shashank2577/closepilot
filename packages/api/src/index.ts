@@ -1,9 +1,13 @@
+import './telemetry.js';
 import { Hono } from 'hono';
 import { corsMiddleware } from './middleware/cors.js';
+import { requestIdMiddleware } from './middleware/requestId.js';
+import { metricsMiddleware } from './middleware/metrics.js';
 import { dealsRoutes } from './routes/deals.js';
 import { activitiesRoutes } from './routes/activities.js';
 import { approvalsRoutes } from './routes/approvals.js';
 import { analyticsRoutes } from './routes/analytics.js';
+import { metricsRegistry } from './metrics.js';
 
 /**
  * Closepilot API Server
@@ -12,8 +16,10 @@ import { analyticsRoutes } from './routes/analytics.js';
 
 const app = new Hono();
 
-// Apply CORS middleware
+// Apply middleware
 app.use('*', corsMiddleware);
+app.use('*', requestIdMiddleware);
+app.use('*', metricsMiddleware);
 
 // Health check
 app.get('/', (c) => {
@@ -29,6 +35,12 @@ app.route('/api/deals', dealsRoutes);
 app.route('/api/activities', activitiesRoutes);
 app.route('/api/approvals', approvalsRoutes);
 app.route('/api/analytics', analyticsRoutes);
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (c) => {
+  const metrics = await metricsRegistry.metrics();
+  return c.text(metrics, 200, { 'Content-Type': metricsRegistry.contentType });
+});
 
 import { serve } from '@hono/node-server';
 
