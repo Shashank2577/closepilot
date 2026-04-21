@@ -1,0 +1,33 @@
+{
+  "name": "@closepilot/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Closepilot E2E Pipeline and Contract Tests",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@closepilot/agent-crm-sync": "workspace:^",
+    "@closepilot/agent-scoping": "workspace:^",
+    "@closepilot/agents-ingestion": "workspace:^",
+    "@closepilot/api": "workspace:^",
+    "@closepilot/core": "workspace:*",
+    "@closepilot/db": "workspace:*",
+    "@closepilot/agent-enrichment": "workspace:^",
+    "@closepilot/mcp-client": "workspace:*",
+    "@closepilot/mcp-server": "workspace:^",
+    "@closepilot/orchestrator": "workspace:^",
+    "proposal": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "drizzle-orm": "^0.29.3",
+    "typescript": "^5.3.3",
+    "vitest": "^1.4.0",
+    "zod": "^3.22.4"
+  }
+}
