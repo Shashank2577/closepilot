@@ -76,6 +76,7 @@ export class EnrichmentAgent {
         errors: errors.length > 0 ? errors : undefined,
         nextStage: success ? DealStage.SCOPING : undefined,
         requiresApproval: false,
+        durationMs: endTime.getTime() - startTime.getTime(),
         metadata: {
           agentType: AgentType.ENRICHMENT,
           executionId: `enrichment-${Date.now()}`,
@@ -94,6 +95,7 @@ export class EnrichmentAgent {
         errors: [error.message],
         requiresApproval: true,
         approvalReason: 'Enrichment failed unexpectedly',
+        durationMs: endTime.getTime() - startTime.getTime(),
         metadata: {
           agentType: AgentType.ENRICHMENT,
           executionId: `enrichment-${Date.now()}`,
