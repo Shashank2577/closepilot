@@ -16,7 +16,13 @@ export function getDb() {
     const connectionString = process.env.DATABASE_URL ||
       'postgresql://closepilot:closepilot_dev@localhost:5432/closepilot';
 
-    client = postgres(connectionString);
+    // Neon (and other cloud Postgres providers) require SSL.
+    // postgres.js reads ?sslmode=require from the URL but needs the ssl option
+    // set explicitly when running outside of a browser context.
+    const requireSsl = connectionString.includes('sslmode=require') ||
+      connectionString.includes('neon.tech');
+
+    client = postgres(connectionString, requireSsl ? { ssl: 'require' } : {});
     db = drizzle(client, { schema });
   }
 

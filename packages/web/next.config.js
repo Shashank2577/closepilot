@@ -2,7 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@closepilot/core'],
-  output: 'standalone',
+  // 'standalone' needed for Docker self-hosting, must be omitted for Vercel.
+  // Set NEXT_OUTPUT=standalone in the web Dockerfile; leave unset for Vercel.
+  ...(process.env.NEXT_OUTPUT === 'standalone' ? { output: 'standalone' } : {}),
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     return [

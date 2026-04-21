@@ -1,8 +1,13 @@
 import IORedis from 'ioredis';
 
 /**
- * Singleton Redis connection for BullMQ
+ * Singleton Redis connection for BullMQ.
+ * Supports redis:// (local/Docker) and rediss:// (TLS, e.g. Redis Cloud).
  */
-export const redisConnection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const isTls = redisUrl.startsWith('rediss://');
+
+export const redisConnection = new IORedis(redisUrl, {
   maxRetriesPerRequest: null, // Required for BullMQ
+  ...(isTls ? { tls: {} } : {}),
 });

@@ -1,0 +1,13 @@
+app = "closepilot-worker-staging"
+primary_region = "ord"
+
+[build]
+dockerfile = "packages/agents/orchestrator/Dockerfile"
+
+[env]
+NODE_ENV = "staging"
+
+[[vm]]
+memory = "512mb"
+cpu_kind = "shared"
+cpus = 1
