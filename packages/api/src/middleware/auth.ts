@@ -31,15 +31,11 @@ export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => 
 
 export const requireRole = (roles: UserRole[]): MiddlewareHandler<AppContext> => {
   return async (c, next) => {
-    let authResponse: Response | undefined;
-
     // Run auth middleware first to ensure user is authenticated
-    authResponse = await authMiddleware(c, async () => {
-      // This runs if auth succeeds
-    });
+    const authResult = await authMiddleware(c, async () => {});
 
-    if (authResponse) {
-       return authResponse;
+    if (authResult) {
+       return authResult;
     }
 
     const user = c.get('user') as AuthUser;
