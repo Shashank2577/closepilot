@@ -12,6 +12,7 @@ import { registerGmailTools, gmailToolHandlers, gmailToolDefinitions } from './t
 import { driveToolHandlers } from './tools/drive.js';
 import { registerCalendarTools } from './tools/calendar.js';
 import { registerDriveTools } from './tools/drive.js';
+import { memoryToolDefinitions, memoryToolHandlers } from './tools/memory.js';
 
 /**
  * Closepilot Deal Store MCP Server
@@ -59,6 +60,8 @@ async function main() {
         ...dealStoreToolDefinitions,
         // Gmail tools
         ...gmailToolDefinitions,
+        // Memory tools
+        ...memoryToolDefinitions,
         // Calendar tools
         {
           name: 'create_calendar_event',
@@ -482,6 +485,13 @@ async function main() {
           const result = await handler(args);
           return result;
         }
+      }
+
+      // Memory tools
+      const memoryHandler = memoryToolHandlers[name];
+      if (memoryHandler) {
+        const result = await memoryHandler(args);
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
       }
 
       return {

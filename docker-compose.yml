@@ -1,8 +1,8 @@
 services:
 
-  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  # ── PostgreSQL (pgvector) ──────────────────────────────────────────────────
   postgres:
-    image: public.ecr.aws/docker/library/postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: closepilot-postgres
     restart: unless-stopped
     ports:
@@ -31,6 +31,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://closepilot:closepilot_dev@postgres:5432/closepilot
+      REDIS_URL: redis://redis:6379
       API_PORT: 3001
       NODE_ENV: production
     depends_on:
@@ -55,6 +56,23 @@ services:
     depends_on:
       - api
 
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: closepilot-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local

@@ -18,6 +18,7 @@
     "@closepilot/core": "workspace:*",
     "@closepilot/db": "workspace:*",
     "@modelcontextprotocol/sdk": "^0.5.0",
+    "openai": "^4.47.3",
     "@types/luxon": "^3.7.1",
     "googleapis": "^133.0.0",
     "luxon": "^3.7.2",
