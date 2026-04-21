@@ -1,0 +1,66 @@
+# Closepilot Pipeline Definition
+# Defines the stages, transitions, and approval gates for the deal pipeline
+
+version: "1.0"
+
+# ── Pipeline stages ────────────────────────────────────────────────────────
+stages:
+  - name: ingestion
+    agent: ingestion
+    description: "Email received, lead classified, deal created"
+    auto_advance: true        # No human approval needed to enter next stage
+    next_stage: enrichment
+
+  - name: enrichment
+    agent: enrichment
+    description: "Company and prospect research completed"
+    auto_advance: true
+    next_stage: scoping
+
+  - name: scoping
+    agent: scoping
+    description: "Requirements extracted, scope defined, complexity assessed"
+    auto_advance: false       # May need clarification approval
+    approval_condition: "needs_clarification == true"
+    next_stage: proposal
+
+  - name: proposal
+    agent: proposal
+    description: "AI proposal generated and exported to Drive"
+    auto_advance: false       # Always requires human review
+    approval_required: true
+    approval_message: "Please review the generated proposal before it's sent to the client."
+    next_stage: crm_sync
+
+  - name: crm_sync
+    agent: crm_sync
+    description: "Deal synced to CRM, contact and deal record created"
+    auto_advance: true
+    next_stage: completed
+
+  - name: completed
+    description: "Deal fully processed and synced"
+    terminal: true
+
+  - name: failed
+    description: "Deal processing failed — see activity log for details"
+    terminal: true
+
+# ── Error handling ────────────────────────────────────────────────────────
+error_handling:
+  max_retries_per_stage: 3
+  retry_backoff_multiplier: 2
+  on_max_retries: move_to_failed  # move_to_failed | hold | escalate
+  escalation_email: ${APPROVER_EMAIL}
+
+# ── Approval gates ────────────────────────────────────────────────────────
+approvals:
+  timeout_hours: 48
+  reminder_hours: [24, 6]    # Send reminder at 24h and 6h before timeout
+  on_timeout: escalate       # escalate | auto_approve | auto_reject
+
+# ── Activity logging ──────────────────────────────────────────────────────
+activity_logging:
+  log_agent_inputs: false    # Don't log full inputs (may contain PII)
+  log_agent_outputs: true    # Log summaries of outputs
+  retention_days: 90

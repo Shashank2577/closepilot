@@ -1,0 +1,49 @@
+{
+  "plan_file": ".jules-plan.json",
+  "spec_file": "CLOSEPILOT-PHASE2-SPEC.md",
+  "repo": "Shashank2577/closepilot",
+  "account_key_fingerprint": "AQ.Ab8RN6KKi...",
+  "started_at": "2026-04-16T17:42:55.115377+00:00",
+  "phase": "Phase 2 \u2014 Production Readiness",
+  "sessions": [
+    {
+      "task_id": "J-116",
+      "title": "Docker + monitoring + AGENTS.md",
+      "state": "IN_PROGRESS",
+      "note": "pre-existing"
+    },
+    {
+      "task_id": "J-117",
+      "title": "E2E integration test suite",
+      "state": "IN_PROGRESS",
+      "note": "pre-existing"
+    },
+    {
+      "task_id": "J-118",
+      "title": "J-118: Observability \u2014 OpenTelemetry, Prometheus, Request IDs, DB Timing",
+      "session_id": "6183421608462390665",
+      "session_name": "sessions/6183421608462390665",
+      "state": "UNKNOWN",
+      "dispatched_at": "2026-04-16T17:42:55.114196+00:00",
+      "pr_url": null
+    },
+    {
+      "task_id": "J-119",
+      "title": "J-119: Production Hardening \u2014 Env Schema, Rate Limit, Security Headers, Graceful Shutdown",
+      "session_id": "16782386781011625866",
+      "session_name": "sessions/16782386781011625866",
+      "state": "UNKNOWN",
+      "dispatched_at": "2026-04-16T17:42:55.114957+00:00",
+      "pr_url": null
+    },
+    {
+      "task_id": "J-120",
+      "title": "J-120: Production Deploy \u2014 Fly.io, Migrations, Backup, Runbook, Staging",
+      "session_id": "14292060140860670939",
+      "session_name": "sessions/14292060140860670939",
+      "state": "UNKNOWN",
+      "dispatched_at": "2026-04-16T17:42:55.115370+00:00",
+      "pr_url": null
+    }
+  ]
+}

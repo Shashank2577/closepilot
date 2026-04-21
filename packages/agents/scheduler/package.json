@@ -1,0 +1,31 @@
+{
+  "name": "@closepilot/agents-scheduler",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Scheduler Agent - Automates meeting scheduling for high-value leads",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts",
+    "test": "vitest run",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@closepilot/mcp-client": "workspace:*",
+    "@anthropic-ai/sdk": "^0.30.0",
+    "luxon": "^3.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/luxon": "^3.4.2",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "name": "access_token",
+    "value": "mock-token",
+    "domain": "localhost",
+    "path": "/",
+    "expires": 9999999999
+  },
+  {
+    "name": "token_expiry",
+    "value": "9999999999999",
+    "domain": "localhost",
+    "path": "/",
+    "expires": 9999999999
+  }
+]

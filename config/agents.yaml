@@ -1,0 +1,98 @@
+# Closepilot Agent Runtime Configuration
+# Controls how each agent in the pipeline runs
+
+version: "1.0"
+
+# ── Global settings ────────────────────────────────────────────────────────
+global:
+  anthropic_model: claude-3-5-sonnet-20241022
+  mcp_server_path: packages/mcp-server/dist/index.js
+  log_level: info           # debug | info | warn | error
+  max_retries: 3
+  retry_backoff_ms: 2000    # initial backoff, doubles on each retry
+
+# ── Ingestion agent ────────────────────────────────────────────────────────
+ingestion:
+  enabled: true
+  poll_interval_ms: 300000  # 5 minutes
+  gmail_query: "is:unread label:inbox -label:newsletters"
+  max_threads_per_poll: 20
+  lead_confidence_threshold: 0.7  # Minimum Claude confidence to treat as lead
+  entry_point: packages/agents/ingestion/src/index.ts
+  env:
+    required:
+      - ANTHROPIC_API_KEY
+      - GOOGLE_ACCESS_TOKEN
+      - GOOGLE_REFRESH_TOKEN
+      - GOOGLE_CLIENT_ID
+      - GOOGLE_CLIENT_SECRET
+      - DATABASE_URL
+
+# ── Enrichment agent ───────────────────────────────────────────────────────
+enrichment:
+  enabled: true
+  max_concurrent_deals: 3   # Process up to 3 deals in parallel
+  research_depth: standard  # standard | deep
+  entry_point: packages/agents/enrichment/src/index.ts
+  env:
+    required:
+      - ANTHROPIC_API_KEY
+      - DATABASE_URL
+
+# ── Scoping agent ──────────────────────────────────────────────────────────
+scoping:
+  enabled: true
+  clarification_timeout_days: 7   # Days to wait for prospect reply before escalating
+  require_approval_on_clarification: true
+  entry_point: packages/agents/scoping/src/index.ts
+  env:
+    required:
+      - ANTHROPIC_API_KEY
+      - DATABASE_URL
+
+# ── Proposal agent ────────────────────────────────────────────────────────
+proposal:
+  enabled: true
+  require_human_approval: true    # Always require approval before sending
+  drive_template_id: ${PROPOSAL_TEMPLATE_ID}
+  entry_point: packages/agents/proposal/src/index.ts
+  env:
+    required:
+      - ANTHROPIC_API_KEY
+      - GOOGLE_SERVICE_ACCOUNT_EMAIL
+      - GOOGLE_PRIVATE_KEY
+      - DRIVE_TEMPLATES_FOLDER_ID
+      - DATABASE_URL
+
+# ── CRM Sync agent ────────────────────────────────────────────────────────
+crm_sync:
+  enabled: true
+  crm_type: ${CRM_TYPE}           # hubspot | salesforce | pipedrive
+  sync_activities: true
+  sync_documents: true
+  entry_point: packages/agents/crm-sync/src/index.ts
+  env:
+    required:
+      - DATABASE_URL
+      - CRM_TYPE
+    optional:
+      - HUBSPOT_API_KEY
+      - HUBSPOT_OAUTH_TOKEN
+      - SALESFORCE_USERNAME
+      - SALESFORCE_PASSWORD
+      - SALESFORCE_SECURITY_TOKEN
+      - PIPEDRIVE_API_KEY
+
+# ── Orchestrator ─────────────────────────────────────────────────────────
+orchestrator:
+  enabled: true
+  poll_interval_ms: 30000         # Check for work every 30 seconds
+  approval_notification: email    # email | webhook | both
+  approver_email: ${APPROVER_EMAIL}
+  notification_webhook: ${NOTIFICATION_WEBHOOK}
+  approval_timeout_hours: 48      # Escalate if not acted on within 48h
+  entry_point: packages/agents/orchestrator/src/index.ts
+  env:
+    required:
+      - DATABASE_URL
+      - APPROVER_EMAIL
