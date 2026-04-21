@@ -160,6 +160,9 @@ importers:
       '@closepilot/core':
         specifier: workspace:*
         version: link:../../core
+      '@closepilot/db':
+        specifier: workspace:*
+        version: link:../../db
       '@closepilot/mcp-client':
         specifier: workspace:*
         version: link:../../mcp-client
@@ -232,6 +235,9 @@ importers:
       '@closepilot/db':
         specifier: workspace:*
         version: link:../db
+      '@closepilot/orchestrator':
+        specifier: workspace:*
+        version: link:../agents/orchestrator
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1

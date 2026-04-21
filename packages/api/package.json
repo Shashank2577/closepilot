@@ -16,6 +16,7 @@
   "dependencies": {
     "@closepilot/core": "workspace:*",
     "@closepilot/db": "workspace:*",
+    "@closepilot/orchestrator": "workspace:*",
     "hono": "^3.11.11",
     "jose": "^6.2.2",
     "zod": "^3.22.4",

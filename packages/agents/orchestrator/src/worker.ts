@@ -1,7 +1,8 @@
 import { Worker } from 'bullmq';
 import { redisConnection } from './redis.js';
 import type { AgentJob } from './jobs.js';
-import { AgentType, EnrichmentContext, ProposalContext, CrmSyncContext } from '@closepilot/core';
+import { AgentType, EnrichmentContext, ProposalContext, CrmSyncContext, DealStage } from '@closepilot/core';
+import { updateDealStage } from '@closepilot/db';
 
 // Import agents
 import { startIngestionAgent } from '@closepilot/agents-ingestion';
@@ -96,23 +97,35 @@ const worker = new Worker<AgentJob>(
           throw new Error(`Unknown job type: ${type}`);
       }
 
+      // Map job type → the stage the deal moves INTO after this job completes
+      const stageAfterJob: Record<string, DealStage> = {
+        RunIngestion:  DealStage.ENRICHMENT,
+        RunEnrichment: DealStage.SCOPING,
+        RunScoping:    DealStage.PROPOSAL,
+        RunProposal:   DealStage.CRM_SYNC,
+        RunCRMSync:    DealStage.COMPLETED,
+      };
+
+      // Write new stage to DB so the UI reflects progress
+      if (dealId && stageAfterJob[type]) {
+        await updateDealStage(dealId, stageAfterJob[type], `Completed by ${type} worker`).catch(
+          (err: unknown) => console.error(`[Worker] Failed to update deal stage for ${dealId}:`, err)
+        );
+      }
+
       // After successful agent execution, check for the next stage and enqueue it.
-      // This ensures the pipeline continues.
       if (result && result.success && result.nextStage) {
-        const nextJobTypeMap: Record<string, any> = {
+        const nextJobTypeMap: Record<string, string> = {
           'enrichment': 'RunEnrichment',
-          'scoping': 'RunScoping',
-          'proposal': 'RunProposal',
-          'crm_sync': 'RunCRMSync',
+          'scoping':    'RunScoping',
+          'proposal':   'RunProposal',
+          'crm_sync':   'RunCRMSync',
         };
 
         const nextJobType = nextJobTypeMap[result.nextStage];
         if (nextJobType) {
           console.log(`[Worker] Enqueueing next stage: ${nextJobType} for deal ${dealId}`);
-          await enqueueAgentJob({
-            type: nextJobType,
-            dealId,
-          });
+          await enqueueAgentJob({ type: nextJobType as any, dealId });
         }
       }
 

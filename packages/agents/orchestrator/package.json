@@ -16,6 +16,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
     "@closepilot/core": "workspace:*",
+    "@closepilot/db": "workspace:*",
     "@closepilot/mcp-client": "workspace:*",
     "@closepilot/agents-ingestion": "workspace:*",
     "@closepilot/agent-enrichment": "workspace:*",

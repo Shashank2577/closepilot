@@ -537,3 +537,6 @@ export type {
   ThroughputMetrics,
   AgentPerformanceStats,
 } from './reporting.js';
+
+export { enqueueAgentJob } from './queue.js';
+export type { AgentJob, AgentJobType } from './jobs.js';

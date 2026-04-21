@@ -8,6 +8,7 @@ import { activitiesRoutes } from './routes/activities.js';
 import { approvalsRoutes } from './routes/approvals.js';
 import { analyticsRoutes } from './routes/analytics.js';
 import { versionRoutes } from './routes/version.js';
+import { webhooksRoutes } from './routes/webhooks.js';
 import { metricsRegistry } from './metrics.js';
 
 /**
@@ -37,6 +38,7 @@ app.route('/api/activities', activitiesRoutes);
 app.route('/api/approvals', approvalsRoutes);
 app.route('/api/analytics', analyticsRoutes);
 app.route('/api/version', versionRoutes);
+app.route('/api/webhooks', webhooksRoutes);
 
 // Prometheus metrics endpoint
 app.get('/metrics', async (c) => {

@@ -6,6 +6,7 @@ import { errorResponse } from '../lib/errors.js';
 import { requireRole } from '../middleware/auth.js';
 import type { AppContext } from '../types.js';
 import { dealsCreatedCounter } from '../metrics.js';
+import { enqueueAgentJob } from '@closepilot/orchestrator';
 import {
   getDeals,
   getDealStats,
@@ -184,6 +185,11 @@ dealsRoutes.post('/', async (c): Promise<Response> => {
     const dealData = validationResult.data;
     const newDeal = await createDeal(dealData);
     dealsCreatedCounter.inc();
+
+    // Kick off the agent pipeline asynchronously — don't await so the API responds immediately
+    enqueueAgentJob({ type: 'RunIngestion', dealId: String(newDeal.id) }).catch((err: unknown) =>
+      console.error('[API] Failed to enqueue ingestion job for deal', newDeal.id, err)
+    );
 
     return c.json(newDeal, 201);
   } catch (error) {
