@@ -5,9 +5,12 @@ import {
   getApprovalsByDeal,
   getPendingApprovalRecords,
   respondToApproval,
+  getDeal,
+  updateDealStage,
 } from '@closepilot/db';
-import { getDeal } from '@closepilot/db';
 import type { Approval } from '@closepilot/db';
+import { DealStage } from '@closepilot/core';
+import { enqueueAgentJob } from '@closepilot/orchestrator';
 import { errorResponse } from '../lib/errors.js';
 
 /**
@@ -116,8 +119,20 @@ approvalsRoutes.post('/:id/approve', async (c): Promise<Response> => {
       responseComment: approverComment,
     });
 
-    // TODO: Send email notification to requester
-    // TODO: Update deal stage if all approvals complete
+    // Advance deal stage and enqueue next agent based on itemType
+    const itemTypeToNextStage: Record<string, { stage: DealStage; job: string }> = {
+      scope:    { stage: DealStage.PROPOSAL,  job: 'RunProposal' },
+      proposal: { stage: DealStage.CRM_SYNC,  job: 'RunCRMSync' },
+    };
+    const next = itemTypeToNextStage[approval.itemType];
+    if (next) {
+      await updateDealStage(approval.dealId.toString(), next.stage, `Approved via approval #${id}`).catch(
+        (err: unknown) => console.error('[Approvals] Failed to update deal stage:', err)
+      );
+      enqueueAgentJob({ type: next.job as any, dealId: approval.dealId.toString() }).catch(
+        (err: unknown) => console.error('[Approvals] Failed to enqueue next job:', err)
+      );
+    }
 
     return c.json(updatedApproval);
   } catch (error) {
@@ -156,8 +171,10 @@ approvalsRoutes.post('/:id/reject', async (c): Promise<Response> => {
       responseComment: reason,
     });
 
-    // TODO: Send email notification to requester
-    // TODO: Update deal stage to rejected/failed if applicable
+    // Move deal to FAILED when an approval is rejected
+    await updateDealStage(approval.dealId.toString(), DealStage.FAILED, `Rejected via approval #${id}: ${reason}`).catch(
+      (err: unknown) => console.error('[Approvals] Failed to update deal stage to failed:', err)
+    );
 
     return c.json(updatedApproval);
   } catch (error) {
