@@ -12,7 +12,8 @@ async function main() {
     return;
   }
 
-  const client = postgres(databaseUrl, { max: 1 });
+  const requireSsl = databaseUrl.includes('sslmode=require') || databaseUrl.includes('neon.tech');
+  const client = postgres(databaseUrl, { max: 1, ...(requireSsl ? { ssl: 'require' } : {}) });
   const db = drizzle(client);
 
   try {

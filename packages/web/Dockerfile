@@ -18,6 +18,8 @@ WORKDIR /app
 
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# Enable standalone output for Docker self-hosting
+ENV NEXT_OUTPUT=standalone
 
 COPY packages/core/ ./packages/core/
 COPY packages/web/ ./packages/web/

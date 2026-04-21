@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd ../.. && pnpm --filter @closepilot/core build && pnpm --filter @closepilot/web build",
+  "outputDirectory": "packages/web/.next",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "framework": "nextjs",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- packages/web packages/core"
+}
