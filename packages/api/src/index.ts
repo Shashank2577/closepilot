@@ -23,14 +23,10 @@ app.use('*', corsMiddleware);
 app.use('*', requestIdMiddleware);
 app.use('*', metricsMiddleware);
 
-// Health check
-app.get('/', (c) => {
-  return c.json({
-    name: 'Closepilot API',
-    version: '0.1.0',
-    status: 'healthy',
-  });
-});
+// Health check (both root and /api/health for Fly.io probe)
+const healthHandler = (c: any) => c.json({ name: 'Closepilot API', version: '0.1.0', status: 'healthy' });
+app.get('/', healthHandler);
+app.get('/api/health', healthHandler);
 
 // API routes
 app.route('/api/deals', dealsRoutes);

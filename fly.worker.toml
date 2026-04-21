@@ -1,0 +1,16 @@
+app = "closepilot-worker"
+primary_region = "ord"
+
+[build]
+dockerfile = "packages/agents/orchestrator/Dockerfile"
+
+[env]
+NODE_ENV = "production"
+
+# No http_service — this is a background worker, not a web server
+# It connects to Redis and Postgres via internal Fly networking
+
+[[vm]]
+memory = "512mb"
+cpu_kind = "shared"
+cpus = 1
