@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Deal, DealStage } from '@closepilot/core';
 import { KanbanBoard } from '../components/kanban/KanbanBoard';
 import { DealStats } from '../components/deals/DealStats';
+import VelocityChart from '../components/dashboard/VelocityChart';
 import { FilterBar } from '../components/filters/FilterBar';
 import { SearchBar } from '../components/filters/SearchBar';
 import { fetchDeals } from '../lib/api';
@@ -79,6 +80,12 @@ export default function HomePage() {
       <div className="mb-8">
         <DealStats deals={deals} />
       </div>
+
+      {/* Pipeline Velocity */}
+      <section className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Pipeline Velocity</h2>
+        <VelocityChart />
+      </section>
 
       {/* Filters and Search */}
       <div className="mb-6 space-y-4">

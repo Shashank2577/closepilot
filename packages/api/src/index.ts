@@ -3,6 +3,7 @@ import { corsMiddleware } from './middleware/cors.js';
 import { dealsRoutes } from './routes/deals.js';
 import { activitiesRoutes } from './routes/activities.js';
 import { approvalsRoutes } from './routes/approvals.js';
+import { analyticsRoutes } from './routes/analytics.js';
 
 /**
  * Closepilot API Server
@@ -27,6 +28,7 @@ app.get('/', (c) => {
 app.route('/api/deals', dealsRoutes);
 app.route('/api/activities', activitiesRoutes);
 app.route('/api/approvals', approvalsRoutes);
+app.route('/api/analytics', analyticsRoutes);
 
 import { serve } from '@hono/node-server';
 

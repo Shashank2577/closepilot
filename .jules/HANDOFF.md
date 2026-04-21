@@ -1,17 +1,15 @@
-# Handoff
+# HANDOFF
 
-Task **J-W1-API-DEFS** successfully completed.
+Implemented Track 2 of Phase 3 for the Closepilot project using the HIGH-RELIABILITY AUTONOMOUS PROTOCOL.
 
-### Changes Made
-1. **Typing & Validation:** Replaced string literal deal stages with the `DealStage` enum across the `@closepilot/api` package, including in Zod schemas using `z.nativeEnum(DealStage)`.
-2. **Error Normalization:** Introduced an `errorResponse` helper in `src/lib/errors.ts` providing a uniform error payload across endpoints.
-3. **Explicit Typing:** Assigned explicit return types (`Promise<Response>`) to all Hono handlers.
-4. **Testing:** Updated Vitest suites to reflect new enum logic and error payload shapes. Tests confirm that invalid stages are rejected securely.
+## Summary of Changes
+- Added shared TypeScript interfaces `StageVelocity` and `ConversionStats` in `@closepilot/core`.
+- Built analytics queries in `@closepilot/db` (`getDealVelocity`, `getConversionStats`) utilizing Drizzle ORM and robust SQL aggregation.
+- Created `GET /api/analytics/velocity` and `GET /api/analytics/conversion` endpoints in `@closepilot/api` handling data fetching.
+- Added comprehensive Vitest tests for the API analytics endpoints.
+- Designed a `VelocityChart` React component in `@closepilot/web` with `recharts` to render pipeline statistics.
+- Wired the visualization into the Dashboard pipeline layout (`app/page.tsx`).
+- Hardened implementations by fixing code review issues (dynamic API URL loading via `.env` in the client, and proper `GROUP BY` database queries).
+- Addressed cross-package TypeScript build issues.
 
-### Deviations
-None.
-
-### How to Verify
-1. Checkout the branch.
-2. Run `pnpm install` then `pnpm build`.
-3. In `packages/api`, run `pnpm typecheck` and `pnpm test`. Both should execute without errors.
+All tests and typechecks are passing.
