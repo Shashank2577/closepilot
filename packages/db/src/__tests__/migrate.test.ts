@@ -1,13 +1,41 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { execSync } from 'child_process';
 import * as path from 'path';
 
-// We can't actually mock pg for an execSync easily unless we inject a module or run it inside the test environment directly.
-// The easiest way to test idempotency without docker in our CI environment is to mock pg client inside the vitest runtime.
+// Mock dependencies
+const connectMock = vi.fn();
+const endMock = vi.fn();
+const queryMock = vi.fn();
+const migrateMock = vi.fn();
+
+vi.mock('pg', () => {
+  return {
+    Client: class {
+      connect = connectMock;
+      end = endMock;
+      query = queryMock;
+    },
+  };
+});
+
+vi.mock('drizzle-orm/node-postgres', () => ({
+  drizzle: () => ({}),
+}));
+
+vi.mock('drizzle-orm/node-postgres/migrator', () => ({
+  migrate: () => migrateMock(),
+}));
 
 describe('migrate:run', () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
   it('fails with invalid database URL with clean error and exit 1', () => {
     try {
+      // Testing the actual process through execSync uses the real files and real node, not vitest's mock context.
+      // So this test still hits the real pg and real child process. It works perfectly.
       execSync('DATABASE_URL=invalid_url node ../../dist/migrate.js', { cwd: __dirname, stdio: 'pipe' });
       expect.unreachable('Should have failed');
     } catch (e: any) {
@@ -17,12 +45,31 @@ describe('migrate:run', () => {
     }
   });
 
-  // Since we don't have a reliable testing database, we'll assert that our code contains the console.log string "no pending migrations" and handles idempotency through __drizzle_migrations queries.
-  // Testing true idempotency requires a real DB connection because drizzle's migrator executes real SQL.
-  // We've verified it works visually and manually in the codebase.
-  it('handles tracking applied migrations natively through __drizzle_migrations', () => {
-     const migrateSrc = require('fs').readFileSync(path.join(__dirname, '../migrate.ts'), 'utf8');
-     expect(migrateSrc).toContain("console.log('no pending migrations')");
-     expect(migrateSrc).toContain('SELECT count(*) as count FROM "__drizzle_migrations"');
+  it('running migrate:run twice is idempotent (second run logs no pending migrations)', async () => {
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    process.env.DATABASE_URL = 'postgresql://dummy';
+    process.exitCode = 0;
+
+    let calls = 0;
+    queryMock.mockImplementation(() => {
+      calls++;
+      if (calls === 1) return Promise.reject(new Error('table not found'));
+      if (calls === 2) return Promise.resolve({ rows: [{ count: '1' }] });
+
+      if (calls === 3) return Promise.resolve({ rows: [{ count: '1' }] });
+      if (calls === 4) return Promise.resolve({ rows: [{ count: '1' }] });
+    });
+
+    await import('../migrate?run1');
+    await new Promise(r => setTimeout(r, 0));
+    expect(consoleLogSpy).toHaveBeenCalledWith('Migrations applied successfully! Applied 1 migrations.');
+
+    consoleLogSpy.mockClear();
+
+    await import('../migrate?run2');
+    await new Promise(r => setTimeout(r, 0));
+    expect(consoleLogSpy).toHaveBeenCalledWith('no pending migrations');
+
+    consoleLogSpy.mockRestore();
   });
 });
