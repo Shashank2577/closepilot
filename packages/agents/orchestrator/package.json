@@ -10,12 +10,20 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting not configured yet'",
-    "test": "echo 'Tests not configured yet'"
+    "test": "vitest run",
+    "worker": "node --loader ts-node/esm src/worker.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
     "@closepilot/core": "workspace:*",
     "@closepilot/mcp-client": "workspace:*",
-    "@anthropic-ai/sdk": "^0.32.0"
+    "@closepilot/agents-ingestion": "workspace:*",
+    "@closepilot/agent-enrichment": "workspace:*",
+    "@closepilot/agent-scoping": "workspace:*",
+    "proposal": "workspace:*",
+    "@closepilot/agent-crm-sync": "workspace:*",
+    "bullmq": "^5.75.2",
+    "ioredis": "^5.10.1"
   },
   "devDependencies": {
     "typescript": "^5.3.3"
