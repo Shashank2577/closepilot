@@ -7,14 +7,11 @@ export function useRBAC(requiredRole: UserRole): { hasAccess: boolean; isLoading
   let hasAccess = false;
 
   if (user) {
-    if (user.role === UserRole.ADMIN) {
-      hasAccess = true;
-    } else if (user.role === requiredRole) {
-      hasAccess = true;
-    } else if (requiredRole === UserRole.REP && (user.role === UserRole.MANAGER || user.role === UserRole.ADMIN)) {
-       // Assuming role hierarchy: ADMIN > MANAGER > REP
-       hasAccess = true;
-    }
+    // ADMIN always has access; MANAGER has access to REP-required routes (role hierarchy)
+    const roleHierarchy: UserRole[] = [UserRole.REP, UserRole.MANAGER, UserRole.ADMIN];
+    const userLevel = roleHierarchy.indexOf(user.role);
+    const requiredLevel = roleHierarchy.indexOf(requiredRole);
+    hasAccess = userLevel >= requiredLevel;
   }
 
   return {
