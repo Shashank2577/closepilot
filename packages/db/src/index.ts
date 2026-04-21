@@ -10,3 +10,6 @@ export * from './queries';
 // Redis cache utilities
 export { getCache, setCache, deleteCache } from './redis.js';
 export { default as redisClient } from './redis.js';
+
+// OpenTelemetry instrumentation
+export * from './instrument.js';
