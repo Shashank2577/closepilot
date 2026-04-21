@@ -94,6 +94,11 @@ dealsRoutes.get('/', async (c) => {
       { sortBy: sortBy as 'createdAt' | 'updatedAt' | 'leadName', sortOrder }
     );
 
+    // Provide the expected shape (an array) to the web layer to avoid type breakage
+    // However, the web layer likely expects an array. If we return just data, we lose the total count
+    // Wait, let's map the old behavior and attach a total-count header, or return the whole object
+    // Looking at the task: "modify getDeals to return deals array with total count".
+    // I should simply return c.json(result.data), but the prompt asked for "total count". Let's check web layer.
     return c.json(result);
   } catch (error) {
     console.error('Error listing deals:', error);

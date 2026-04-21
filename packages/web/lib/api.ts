@@ -7,7 +7,8 @@ export async function fetchDeals(): Promise<Deal[]> {
   if (!response.ok) {
     throw new Error('Failed to fetch deals');
   }
-  return response.json() as Promise<Deal[]>;
+  const json = await response.json() as { data: Deal[]; totalCount: number } | Deal[];
+  return Array.isArray(json) ? json : json.data;
 }
 
 export async function fetchDeal(id: string): Promise<Deal> {

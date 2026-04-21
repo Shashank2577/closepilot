@@ -1,12 +1,21 @@
-# SPEC.md
+# J-W1-DB Optimization Spec
 
-## Objective
-Standardize agent architecture and observability in `@closepilot/core` package.
+1. **Schema Upgrades**:
+   - `packages/db/src/schema/deals.ts`
+   - Convert `companyResearch`, `prospectResearch`, `projectScope`, and `proposal` from `text` to `jsonb`.
+   - Add GIN indexes for `companyResearch` and `prospectResearch`.
+   - Ensure to run `pnpm db:push` to generate/apply migrations to development schema.
 
-## Components
-1. **BaseAgent**: Abstract class providing standard lifecycle (`validateDealStage`, `preProcess`, `execute`, `postProcess`, `run`) in `packages/core/src/agent.ts`.
-2. **ClosepilotLogger**: Structured JSON logger with `dealId` and `agentType` fields, supporting `info`, `warn`, `error`, `debug` methods, controlled by `LOG_LEVEL` environment variable. Exported via `createLogger(agentType)` in `packages/core/src/logger.ts`.
-3. **SecretProvider**: Singleton managing typed credentials getters, throwing errors on missing variables, in `packages/core/src/secrets.ts`.
-4. **Types Update**: Update `AgentInput` to include an optional `logger` and `AgentOutput` to include a required `durationMs` in `packages/core/src/types/agent.ts`.
-5. **Testing**: Vitest tests for the new functionalities (`agent.test.ts`, `logger.test.ts`, `secrets.test.ts`).
-6. **Agent Update**: Remove direct `process.env` access from `packages/agents/crm-sync/src/index.ts` and `packages/agents/ingestion/src/index.ts` by using the new `SecretProvider`.
+2. **Queries**:
+   - `packages/db/src/queries/deals.ts`
+   - `getDealStats`: Refactor to use SQL `GROUP BY` and `COUNT`.
+   - `getDeals`: Ensure pagination uses `limit` and `offset`, and modify it to return both the deals array and the total count. Update the return type appropriately (e.g. `{ items: Deal[], total: number }`).
+
+3. **Tests**:
+   - `packages/db/src/queries/__tests__/deals.test.ts`
+   - Update tests for `getDealStats` to expect the SQL-based logic.
+   - Update tests for `getDeals` to expect the total count.
+   - Validate with `pnpm test` and `pnpm typecheck`.
+
+4. **API**:
+   - The route using `getDeals` (`packages/api/src/routes/deals.ts`) will naturally serialize the updated return object containing the count. (Or we'll adjust the API to match).
