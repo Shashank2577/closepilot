@@ -1,33 +1,24 @@
-# Track 3 — Enterprise RBAC & Security Spec
+# Technical Specification & Plan: J-W1-P3-T2
 
-## 3.1 Role & Permission Types
-File: `packages/core/src/types/rbac.ts`
-Definitions: `UserRole` enum (`ADMIN`, `MANAGER`, `REP`), `AuthUser` interface.
-Export from `packages/core/src/index.ts`.
+## Objective
+Implement Track 2 of Phase 3 for the Closepilot project, focusing on Advanced Analytics & Telemetry.
 
-## 3.2 Database Schema
-File: `packages/db/src/schema/users.ts`
-Tables: `organizations` and `users`.
-Changes: Add `orgId` to `deals` in `packages/db/src/schema/deals.ts`.
-Export from `packages/db/src/schema/index.ts` and `packages/db/src/index.ts`.
+## Components to Implement
 
-## 3.3 Auth Middleware
-File: `packages/api/src/middleware/auth.ts`
-Package: add `jose` to `packages/api/package.json`.
-Implement `authMiddleware` and `requireRole` guard factory.
+### 1. Shared Types (`packages/core/src/types/analytics.ts`)
+Define `StageVelocity` and `ConversionStats` interfaces and export them.
 
-## 3.4 Protect Existing Routes
-File: `packages/api/src/routes/deals.ts`
-Apply `requireRole([UserRole.ADMIN, UserRole.MANAGER])` to the DELETE route.
+### 2. Analytics Queries (`packages/db/src/queries/analytics.ts`)
+Implement `getDealVelocity()` and `getConversionStats()`.
 
-## 3.5 UI Access Control Hook
-Files: `packages/web/lib/auth/roles.ts`, `packages/web/lib/auth/UserContext.tsx`
-Create `useRBAC` hook and `UserContext` provider.
+### 3. Analytics API Routes (`packages/api/src/routes/analytics.ts`)
+Create GET endpoints `/api/analytics/velocity` and `/api/analytics/conversion`.
 
-## 3.6 Apply RBAC in UI
-File: `packages/web/components/deals/DealModal.tsx` or similar.
-Look for a delete button (or add one if it doesn't exist) and wrap it with `useRBAC(UserRole.MANAGER)`.
+### 4. Dashboard UI (`packages/web/components/dashboard/VelocityChart.tsx`)
+Create a React client component using `recharts` to render a bar chart of stage velocity.
 
-## 3.7 Tests
-File: `packages/api/src/middleware/auth.test.ts`
-Write required test cases for `authMiddleware` and `requireRole`.
+### 5. Wire into Dashboard (`packages/web/app/page.tsx`)
+Embed `VelocityChart` in the dashboard pipeline page.
+
+### 6. Tests
+Add unit tests for the analytics API routes.

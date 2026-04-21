@@ -13,6 +13,9 @@ export * from './types/calendar';
 // Drive integration types
 export * from './types/drive';
 
+// Analytics types
+export * from './types/analytics.js';
+
 // Agent base class
 export * from './agent';
 

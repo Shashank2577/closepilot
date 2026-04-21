@@ -212,6 +212,7 @@ export class AgentDispatcher {
     // 4. Return agent output
 
     // Simulate agent execution
+    const startMs = Date.now();
     await new Promise(resolve => setTimeout(resolve, 100));
 
     return {
@@ -219,6 +220,7 @@ export class AgentDispatcher {
       success: true,
       nextStage: this.getNextStageForAgent(agentType),
       requiresApproval: false,
+      durationMs: Date.now() - startMs,
       metadata: {
         agentType,
         executionId: `${deal.id}-${agentType}-${Date.now()}`,
