@@ -1,44 +1,73 @@
 import React from 'react';
-
-type AgentType =
-  | 'ingestion'
-  | 'enrichment'
-  | 'scoping'
-  | 'proposal'
-  | 'crm_sync'
-  | 'orchestrator'
-  | 'system';
+import { AgentType } from '@closepilot/core';
 
 interface ActivityIconProps {
-  agentType: AgentType;
-  size?: 'sm' | 'md' | 'lg';
+  agentType: string;
+  size?: number;
 }
 
-const agentConfig = {
-  ingestion: { emoji: '📥', color: 'bg-blue-500', label: 'Ingestion' },
-  enrichment: { emoji: '🔍', color: 'bg-purple-500', label: 'Enrichment' },
-  scoping: { emoji: '📏', color: 'bg-yellow-500', label: 'Scoping' },
-  proposal: { emoji: '📄', color: 'bg-orange-500', label: 'Proposal' },
-  crm_sync: { emoji: '🔄', color: 'bg-green-500', label: 'CRM Sync' },
-  orchestrator: { emoji: '🤖', color: 'bg-gray-500', label: 'Orchestrator' },
-  system: { emoji: '⚙️', color: 'bg-gray-400', label: 'System' },
-};
-
-export function ActivityIcon({ agentType, size = 'md' }: ActivityIconProps) {
-  const config = agentConfig[agentType] || agentConfig.system;
-
-  const sizeClasses = {
-    sm: 'w-6 h-6 text-sm',
-    md: 'w-8 h-8 text-base',
-    lg: 'w-10 h-10 text-lg',
+/**
+ * Color-coded icon by agent type
+ */
+export function ActivityIcon({ agentType, size = 24 }: ActivityIconProps) {
+  const getIconConfig = (type: string) => {
+    switch (type.toLowerCase()) {
+      case AgentType.INGESTION:
+        return {
+          icon: '📥',
+          color: 'bg-blue-100 text-blue-700',
+          label: 'Ingestion',
+        };
+      case AgentType.ENRICHMENT:
+        return {
+          icon: '🔍',
+          color: 'bg-purple-100 text-purple-700',
+          label: 'Enrichment',
+        };
+      case AgentType.SCOPING:
+        return {
+          icon: '📏',
+          color: 'bg-green-100 text-green-700',
+          label: 'Scoping',
+        };
+      case AgentType.PROPOSAL:
+        return {
+          icon: '📄',
+          color: 'bg-orange-100 text-orange-700',
+          label: 'Proposal',
+        };
+      case AgentType.CRM_SYNC:
+        return {
+          icon: '🔄',
+          color: 'bg-teal-100 text-teal-700',
+          label: 'CRM Sync',
+        };
+      case AgentType.ORCHESTRATOR:
+        return {
+          icon: '🎯',
+          color: 'bg-red-100 text-red-700',
+          label: 'Orchestrator',
+        };
+      default:
+        return {
+          icon: '⚙️',
+          color: 'bg-gray-100 text-gray-700',
+          label: 'Unknown',
+        };
+    }
   };
+
+  const config = getIconConfig(agentType);
 
   return (
     <div
-      className={`${sizeClasses[size]} ${config.color} rounded-full flex items-center justify-center text-white`}
+      className={`flex items-center justify-center rounded-full ${config.color}`}
+      style={{ width: size, height: size }}
       title={config.label}
     >
-      {config.emoji}
+      <span className="text-sm" role="img" aria-label={config.label}>
+        {config.icon}
+      </span>
     </div>
   );
 }

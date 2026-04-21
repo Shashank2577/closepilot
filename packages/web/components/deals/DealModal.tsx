@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Deal, DealStage } from '@closepilot/core';
+import { Deal, DealStage, UserRole } from '@closepilot/core';
 import { Badge } from '../ui/badge';
 import { Card, CardHeader, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
+import { useRBAC } from '../../lib/auth/roles';
 
 interface DealModalProps {
   deal: Deal;
@@ -12,6 +13,8 @@ interface DealModalProps {
 }
 
 export function DealModal({ deal, onClose }: DealModalProps) {
+  const { hasAccess: canDelete } = useRBAC(UserRole.MANAGER);
+
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString('en-US', {
       month: 'long',
@@ -291,6 +294,11 @@ export function DealModal({ deal, onClose }: DealModalProps) {
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
+            {canDelete && (
+              <Button variant="danger" onClick={() => console.log('Delete logic goes here')}>
+                Delete Deal
+              </Button>
+            )}
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>

@@ -70,28 +70,41 @@ describe('Deals Routes', () => {
       expect(await res.json()).toEqual(mockDeals);
     });
 
-    it('GET /api/deals/search/similar without query should fail', async () => {
+
+    it('GET /api/deals/search/similar should return standardized error structure on invalid query', async () => {
       const req = new Request('http://localhost/api/deals/search/similar');
       const res = await app.request(req);
+      const body = await res.json();
+
       expect(res.status).toBe(400);
+      expect(body).toHaveProperty('error');
+      expect(body.error).toBe('Invalid search parameters');
+      expect(body).toHaveProperty('details');
+      expect(Array.isArray(body.details)).toBe(true);
     });
+
+    it('GET /api/deals/stage/:stage with invalid stage should fail with standardized error structure', async () => {
+      const req = new Request('http://localhost/api/deals/stage/invalid_stage');
+      const res = await app.request(req);
+      const body = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(body).toEqual({ error: 'Invalid stage' });
+    });
+
 
     it('GET /api/deals/stage/:stage should return deals by stage', async () => {
       const mockDeals = [{ id: '1' }];
       vi.mocked(queryDealsByStage).mockResolvedValue(mockDeals as any);
 
-      const req = new Request('http://localhost/api/deals/stage/ingestion');
+      const req = new Request(`http://localhost/api/deals/stage/${DealStage.INGESTION}`);
       const res = await app.request(req);
 
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual(mockDeals);
     });
 
-    it('GET /api/deals/stage/:stage with invalid stage should fail', async () => {
-      const req = new Request('http://localhost/api/deals/stage/invalid_stage');
-      const res = await app.request(req);
-      expect(res.status).toBe(400);
-    });
+
 
     it('GET /api/deals/:id should return specific deal', async () => {
       const mockDeal = { id: '1' };
@@ -175,8 +188,8 @@ describe('Deals Routes', () => {
     });
 
     it('PATCH /api/deals/:id/stage should update deal stage', async () => {
-      const input = { stage: 'scoping', reason: 'Ready to scope' };
-      const mockDeal = { id: '1', stage: 'scoping' };
+      const input = { stage: DealStage.SCOPING, reason: 'Ready to scope' };
+      const mockDeal = { id: '1', stage: DealStage.SCOPING };
       vi.mocked(updateDealStage).mockResolvedValue(mockDeal as any);
 
       const req = new Request('http://localhost/api/deals/1/stage', {
@@ -203,11 +216,20 @@ describe('Deals Routes', () => {
     });
 
     it('DELETE /api/deals/:id should soft delete a deal to failed stage', async () => {
-      const mockDeal = { id: '1', stage: 'failed' };
+      const mockDeal = { id: '1', stage: DealStage.FAILED };
       vi.mocked(updateDealStage).mockResolvedValue(mockDeal as any);
 
+      const { SignJWT } = await import('jose');
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'default_secret');
+      const token = await new SignJWT({ role: 'ADMIN' })
+        .setProtectedHeader({ alg: 'HS256' })
+        .sign(secret);
+
       const req = new Request('http://localhost/api/deals/1', {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       const res = await app.request(req);
 

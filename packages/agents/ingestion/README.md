@@ -58,9 +58,10 @@ pnpm start
 
 ```typescript
 import { startIngestionAgent } from '@closepilot/agents-ingestion';
+import { secrets } from '@closepilot/core';
 
 const monitor = await startIngestionAgent({
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  anthropicApiKey: secrets.getAnthropicKey(),
   pollIntervalMinutes: 5,
   gmailQuery: 'is:unread',
 });
@@ -83,10 +84,11 @@ import {
   createEmailClassifier,
   createLeadExtractor,
 } from '@closepilot/agents-ingestion';
+import { secrets } from '@closepilot/core';
 
 // Create classifier
 const classifier = createEmailClassifier({
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  anthropicApiKey: secrets.getAnthropicKey(),
 });
 
 // Classify an email

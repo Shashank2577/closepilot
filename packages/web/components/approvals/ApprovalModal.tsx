@@ -61,7 +61,8 @@ export function ApprovalModal({ approval, onClose, onUpdate }: ApprovalModalProp
         throw new Error(data.error || 'Failed to submit response');
       }
 
-      onUpdate(approval.id, action);
+      const status = action === 'approve' ? 'approved' : 'rejected';
+      onUpdate(approval.id, status);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -69,8 +70,6 @@ export function ApprovalModal({ approval, onClose, onUpdate }: ApprovalModalProp
       setSubmitting(false);
     }
   };
-
-  const optional = comment.trim().length > 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -165,7 +164,7 @@ export function ApprovalModal({ approval, onClose, onUpdate }: ApprovalModalProp
 
             <div>
               <label htmlFor="comment" className="block text-sm font-medium text-gray-700">
-                Comment {!optional ? '(required for rejection)' : '(optional)'}
+                Comment {!comment.trim() ? '(required for rejection)' : '(optional)'}
               </label>
               <textarea
                 id="comment"
@@ -184,12 +183,11 @@ export function ApprovalModal({ approval, onClose, onUpdate }: ApprovalModalProp
             )}
 
             <div className="flex justify-end space-x-3 pt-4">
-              <Button onClick={onClose} variant="outline" disabled={submitting}>
+              <Button onClick={onClose} variant="secondary" disabled={submitting}>
                 Cancel
               </Button>
               <Button
                 onClick={() => handleSubmit('reject')}
-                variant="destructive"
                 disabled={submitting}
               >
                 Reject

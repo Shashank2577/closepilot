@@ -33,21 +33,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Token is expired, attempt refresh
-  if (tokenExpiry && Date.now() >= parseInt(tokenExpiry)) {
-    const refreshToken = request.cookies.get('refresh_token')?.value;
-
-    if (refreshToken) {
-      // Note: We can't await in middleware, so we redirect to a refresh handler
-      // or let the client handle refresh
-      // For now, redirect to signin
-      const url = request.nextUrl.clone();
-      url.pathname = '/auth/signin';
-      url.searchParams.set('redirect', path);
-      return NextResponse.redirect(url);
-    }
-  }
-
   return NextResponse.next();
 }
 

@@ -1,51 +1,77 @@
 import { Hono } from 'hono';
-import { createActivity, getActivitiesByDeal, getRecentActivities } from '@closepilot/db';
+import {
+  createActivity,
+  getActivitiesByDeal,
+  getRecentActivities,
+} from '@closepilot/db';
+import type { Activity } from '@closepilot/db';
+import { errorResponse } from '../lib/errors.js';
 
 /**
- * Activity streaming endpoints with SSE support
+ * Activity streaming endpoints
+ * Implements SSE streaming for real-time activity updates
  */
 
 export const activitiesRoutes = new Hono();
 
-// In-memory store for SSE connections
-const sseClients = new Set<ReadableStreamDefaultController>();
+// In-memory storage for active SSE connections
+const activeConnections = new Set<ReadableStreamDefaultController>();
 
-// Broadcast activity to all connected SSE clients
-function broadcastActivity(activity: any) {
-  const data = JSON.stringify(activity);
-  sseClients.forEach((controller) => {
+/**
+ * Broadcast activity to all connected SSE clients
+ */
+function broadcastActivity(activity: Activity) {
+  const data = `event: message\ndata: ${JSON.stringify(activity)}\n\n`;
+  activeConnections.forEach((controller) => {
     try {
-      controller.enqueue(`event: message\ndata: ${data}\n\n`);
+      controller.enqueue(new TextEncoder().encode(data));
     } catch (error) {
-      console.error('Error broadcasting to client:', error);
-      sseClients.delete(controller);
+      // Connection might be closed, remove it
+      activeConnections.delete(controller);
     }
   });
 }
 
-// SSE endpoint for real-time activity streaming
-activitiesRoutes.get('/stream', async (c) => {
+/**
+ * GET /api/activities/stream
+ * SSE endpoint for real-time activity streaming
+ */
+activitiesRoutes.get('/stream', async (c): Promise<Response> => {
+  const dealId = c.req.query('dealId');
+
+  // Create a readable stream for SSE
   const stream = new ReadableStream({
     start(controller) {
-      sseClients.add(controller);
+      // Add this connection to active connections
+      activeConnections.add(controller);
 
       // Send initial connection message
-      controller.enqueue(`event: connected\ndata: {"status":"connected"}\n\n`);
+      const connectMsg = `event: connected\ndata: ${JSON.stringify({
+        timestamp: new Date().toISOString(),
+        dealId: dealId || 'all'
+      })}\n\n`;
+      controller.enqueue(new TextEncoder().encode(connectMsg));
 
       // Send heartbeat every 30 seconds to keep connection alive
       const heartbeatInterval = setInterval(() => {
         try {
-          controller.enqueue(`event: heartbeat\ndata: {"timestamp":"${new Date().toISOString()}"}\n\n`);
+          const heartbeat = `event: heartbeat\ndata: ${JSON.stringify({
+            timestamp: new Date().toISOString()
+          })}\n\n`;
+          controller.enqueue(new TextEncoder().encode(heartbeat));
         } catch (error) {
+          // Connection closed, cleanup
           clearInterval(heartbeatInterval);
-          sseClients.delete(controller);
+          activeConnections.delete(controller);
+          controller.close();
         }
       }, 30000);
 
       // Cleanup on connection close
-      c.req.raw.signal.addEventListener('abort', () => {
+      c.req.raw.signal?.addEventListener('abort', () => {
         clearInterval(heartbeatInterval);
-        sseClients.delete(controller);
+        activeConnections.delete(controller);
+        controller.close();
       });
     },
   });
@@ -55,52 +81,82 @@ activitiesRoutes.get('/stream', async (c) => {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
+      'X-Accel-Buffering': 'no', // Disable nginx buffering
     },
   });
 });
 
-// Get activities for a specific deal
-activitiesRoutes.get('/deal/:dealId', async (c) => {
+/**
+ * GET /api/activities/deal/:dealId
+ * Get all activities for a specific deal
+ */
+activitiesRoutes.get('/deal/:dealId', async (c): Promise<Response> => {
   const dealId = parseInt(c.req.param('dealId'));
-  const activities = await getActivitiesByDeal(dealId);
-  return c.json(activities);
+
+  if (isNaN(dealId)) {
+    return c.json(errorResponse('Invalid deal ID'), 400);
+  }
+
+  try {
+    const activities = await getActivitiesByDeal(dealId);
+    return c.json(activities);
+  } catch (error) {
+    console.error('Error fetching activities:', error);
+    return c.json(errorResponse('Failed to fetch activities'), 500);
+  }
 });
 
-// Get recent activities
-activitiesRoutes.get('/recent', async (c) => {
+/**
+ * GET /api/activities/recent
+ * Get recent activities across all deals
+ */
+activitiesRoutes.get('/recent', async (c): Promise<Response> => {
   const limit = parseInt(c.req.query('limit') || '50');
-  const activities = await getRecentActivities(limit);
-  return c.json(activities);
+
+  if (limit < 1 || limit > 500) {
+    return c.json(errorResponse('Limit must be between 1 and 500'), 400);
+  }
+
+  try {
+    const activities = await getRecentActivities(limit);
+    return c.json(activities);
+  } catch (error) {
+    console.error('Error fetching recent activities:', error);
+    return c.json(errorResponse('Failed to fetch recent activities'), 500);
+  }
 });
 
-// Create a new activity (called by agents)
-activitiesRoutes.post('/', async (c) => {
+/**
+ * POST /api/activities
+ * Create a new activity (called by agents)
+ */
+activitiesRoutes.post('/', async (c): Promise<Response> => {
   try {
     const data = await c.req.json();
 
     // Validate required fields
     if (!data.dealId || !data.agentType || !data.activityType || !data.description) {
       return c.json(
-        { error: 'Missing required fields: dealId, agentType, activityType, description' },
+        errorResponse('Missing required fields', undefined, { required: ['dealId', 'agentType', 'activityType', 'description'] }),
         400
       );
     }
 
+    // Create activity
     const activity = await createActivity({
-      dealId: data.dealId,
+      dealId: parseInt(data.dealId),
       agentType: data.agentType,
       activityType: data.activityType,
       description: data.description,
       metadata: data.metadata ? JSON.stringify(data.metadata) : undefined,
     });
 
-    // Broadcast to all SSE clients
+    // Broadcast to all connected SSE clients
     broadcastActivity(activity);
 
     return c.json(activity, 201);
   } catch (error) {
     console.error('Error creating activity:', error);
-    return c.json({ error: 'Failed to create activity' }, 500);
+    return c.json(errorResponse('Failed to create activity'), 500);
   }
 });

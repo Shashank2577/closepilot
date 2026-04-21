@@ -1,4 +1,5 @@
-import { HubSpotClient } from '@hubspot/api-client';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+import { Client as HubSpotClientClass } from '@hubspot/api-client';
 import type {
   CRMAdapter,
   CRMConfig,
@@ -17,7 +18,8 @@ import type {
  * Implements CRM sync for HubSpot
  */
 export class HubSpotAdapter implements CRMAdapter {
-  private client?: HubSpotClient;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private client?: any;
   private config?: CRMConfig;
   private retryCount = 0;
 
@@ -31,7 +33,7 @@ export class HubSpotAdapter implements CRMAdapter {
       throw new Error('HubSpot requires either apiKey or oauthToken');
     }
 
-    this.client = new HubSpotClient({
+    this.client = new HubSpotClientClass({
       apiKey: config.apiKey,
       accessToken: config.oauthToken,
     });

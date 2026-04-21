@@ -1,8 +1,7 @@
 import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import { ActivityIcon } from './ActivityIcon';
 
-export interface Activity {
+interface Activity {
   id: number;
   dealId: number;
   agentType: string;
@@ -14,47 +13,69 @@ export interface Activity {
 
 interface ActivityItemProps {
   activity: Activity;
-  showDeal?: boolean;
+  showDealLink?: boolean;
 }
 
-export function ActivityItem({ activity, showDeal = false }: ActivityItemProps) {
-  const metadata = activity.metadata ? JSON.parse(activity.metadata) : null;
+/**
+ * Single activity item with icon, description, and timestamp
+ */
+export function ActivityItem({ activity, showDealLink = false }: ActivityItemProps) {
+  const parseMetadata = (metadata?: string) => {
+    if (!metadata) return null;
+    try {
+      return JSON.parse(metadata);
+    } catch {
+      return null;
+    }
+  };
+
+  const metadata = parseMetadata(activity.metadata);
+  const timeAgo = new Date(activity.createdAt).toLocaleString();
 
   return (
-    <div className="flex items-start gap-3 p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-      <ActivityIcon agentType={activity.agentType as any} size="md" />
+    <div className="flex items-start space-x-3 p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+      {/* Icon */}
+      <ActivityIcon agentType={activity.agentType} size={40} />
 
+      {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <p className="text-sm font-medium text-gray-900 capitalize">
-            {activity.agentType.replace(/_/g, ' ')}
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-sm font-semibold text-gray-900 capitalize">
+            {activity.agentType.replace('_', ' ')}
           </p>
-          <span className="text-xs text-gray-500">•</span>
-          <p className="text-xs text-gray-500 capitalize">
-            {activity.activityType.replace(/_/g, ' ')}
-          </p>
+          <time className="text-xs text-gray-500">{timeAgo}</time>
         </div>
 
-        <p className="text-sm text-gray-700 mb-1">{activity.description}</p>
+        <p className="text-sm text-gray-700 mb-2">{activity.description}</p>
 
-        {showDeal && (
-          <p className="text-xs text-gray-500 mb-1">Deal #{activity.dealId}</p>
+        {/* Metadata display */}
+        {metadata && (
+          <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+            {Object.entries(metadata).map(([key, value]) => (
+              <div key={key} className="flex gap-2">
+                <span className="font-medium">{key}:</span>
+                <span className="truncate">
+                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
 
-        <p className="text-xs text-gray-400">
-          {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
-        </p>
-
-        {metadata && Object.keys(metadata).length > 0 && (
-          <details className="mt-2">
-            <summary className="text-xs text-gray-600 cursor-pointer hover:text-gray-800">
-              View details
-            </summary>
-            <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-x-auto">
-              {JSON.stringify(metadata, null, 2)}
-            </pre>
-          </details>
-        )}
+        {/* Activity type badge */}
+        <div className="mt-2">
+          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700">
+            {activity.activityType.replace('_', ' ').toUpperCase()}
+          </span>
+          {showDealLink && (
+            <a
+              href={`/deals/${activity.dealId}`}
+              className="ml-2 text-xs text-blue-600 hover:text-blue-800"
+            >
+              View Deal →
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );

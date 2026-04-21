@@ -1,128 +1,167 @@
 import { Hono } from 'hono';
 import {
-  getPendingApprovalRecords,
-  getApprovalsByDeal,
   createApproval,
-  respondToApproval
-} from '@closepilot/db/src/queries/approvals';
+  getApprovalById,
+  getApprovalsByDeal,
+  getPendingApprovalRecords,
+  respondToApproval,
+} from '@closepilot/db';
+import { getDeal } from '@closepilot/db';
+import type { Approval } from '@closepilot/db';
+import { errorResponse } from '../lib/errors.js';
 
 /**
  * Approval queue endpoints
+ * Manages approval workflow for critical actions
  */
 
 export const approvalsRoutes = new Hono();
 
 // Get pending approvals
-approvalsRoutes.get('/pending', async (c) => {
+approvalsRoutes.get('/pending', async (c): Promise<Response> => {
   try {
-    const approvals = await getPendingApprovalRecords();
-    return c.json(approvals);
+    const pendingApprovals = await getPendingApprovalRecords();
+
+    // Fetch related deal information for each approval
+    const approvalsWithDeals = await Promise.all(
+      pendingApprovals.map(async (approval: Approval) => {
+        const deal = await getDeal(approval.dealId.toString());
+        return {
+          ...approval,
+          deal,
+        };
+      })
+    );
+
+    return c.json(approvalsWithDeals);
   } catch (error) {
-    console.error('Failed to get pending approvals:', error);
-    return c.json({ error: 'Internal server error' }, 500);
+    console.error('Error fetching pending approvals:', error);
+    return c.json(errorResponse('Failed to fetch pending approvals'), 500);
   }
 });
 
 // Get approvals for a deal
-approvalsRoutes.get('/deal/:dealId', async (c) => {
-  const dealId = parseInt(c.req.param('dealId'), 10);
-  if (isNaN(dealId)) {
-    return c.json({ error: 'Invalid deal ID' }, 400);
-  }
-
+approvalsRoutes.get('/deal/:dealId', async (c): Promise<Response> => {
   try {
-    const approvals = await getApprovalsByDeal(dealId);
-    return c.json(approvals);
+    const dealId = parseInt(c.req.param('dealId'));
+    if (isNaN(dealId)) {
+      return c.json(errorResponse('Invalid deal ID'), 400);
+    }
+
+    const dealApprovals = await getApprovalsByDeal(dealId);
+    return c.json(dealApprovals);
   } catch (error) {
-    console.error(`Failed to get approvals for deal ${dealId}:`, error);
-    return c.json({ error: 'Internal server error' }, 500);
+    console.error('Error fetching deal approvals:', error);
+    return c.json(errorResponse('Failed to fetch deal approvals'), 500);
   }
 });
 
 // Create a new approval request
-approvalsRoutes.post('/', async (c) => {
+approvalsRoutes.post('/', async (c): Promise<Response> => {
   try {
     const body = await c.req.json();
     const { dealId, approverEmail, itemType, itemId, requestComment } = body;
 
+    // Validate required fields
     if (!dealId || !approverEmail || !itemType || !itemId) {
-      return c.json({ error: 'Missing required fields' }, 400);
+      return c.json(errorResponse('Missing required fields: dealId, approverEmail, itemType, itemId'), 400);
     }
 
-    // Check business logic here if applicable
-    // (e.g. over $50k or high complexity require approval, deal stage transitions blocked)
+    // Verify deal exists
+    const deal = await getDeal(dealId.toString());
+    if (!deal) {
+      return c.json(errorResponse('Deal not found'), 404);
+    }
 
-    const newApproval = await createApproval({
-      dealId: parseInt(dealId, 10),
+    const approval = await createApproval({
+      dealId: parseInt(dealId),
       approverEmail,
       itemType,
       itemId,
-      requestComment
+      requestComment,
     });
 
-    // TODO: Send email notification to approverEmail (nodemailer/SendGrid)
+    // TODO: Send email notification to approver
 
-    return c.json(newApproval, 201);
+    return c.json(approval, 201);
   } catch (error) {
-    console.error('Failed to create approval:', error);
-    return c.json({ error: 'Internal server error' }, 500);
+    console.error('Error creating approval:', error);
+    return c.json(errorResponse('Failed to create approval request'), 500);
   }
 });
 
-// Approve a deal
-approvalsRoutes.post('/:id/approve', async (c) => {
-  const id = parseInt(c.req.param('id'), 10);
-  if (isNaN(id)) {
-    return c.json({ error: 'Invalid approval ID' }, 400);
-  }
-
+// Approve a request
+approvalsRoutes.post('/:id/approve', async (c): Promise<Response> => {
   try {
-    const body = await c.req.json().catch(() => ({}));
-    const { approverComment } = body;
-
-    const updated = await respondToApproval({
-      approvalId: id,
-      status: 'approved',
-      responseComment: approverComment
-    });
-
-    // TODO: If this was the last pending approval for the deal, unblock deal stage transition
-    // TODO: Send email notification to requester
-
-    return c.json(updated);
-  } catch (error) {
-    console.error(`Failed to approve ${id}:`, error);
-    return c.json({ error: 'Internal server error' }, 500);
-  }
-});
-
-// Reject a deal
-approvalsRoutes.post('/:id/reject', async (c) => {
-  const id = parseInt(c.req.param('id'), 10);
-  if (isNaN(id)) {
-    return c.json({ error: 'Invalid approval ID' }, 400);
-  }
-
-  try {
-    const body = await c.req.json();
-    const { reason } = body;
-
-    if (!reason) {
-      return c.json({ error: 'Comment/reason is required for rejection' }, 400);
+    const id = parseInt(c.req.param('id'));
+    if (isNaN(id)) {
+      return c.json(errorResponse('Invalid approval ID'), 400);
     }
 
-    const updated = await respondToApproval({
+    const { approverComment } = await c.req.json();
+
+    // Get approval to check current status
+    const approval = await getApprovalById(id);
+    if (!approval) {
+      return c.json(errorResponse('Approval not found'), 404);
+    }
+
+    if (approval.status !== 'pending') {
+      return c.json(errorResponse('Approval already processed'), 400);
+    }
+
+    const updatedApproval = await respondToApproval({
       approvalId: id,
-      status: 'rejected',
-      responseComment: reason
+      status: 'approved',
+      responseComment: approverComment,
     });
 
-    // TODO: Update deal status or unblock (as rejected)
     // TODO: Send email notification to requester
+    // TODO: Update deal stage if all approvals complete
 
-    return c.json(updated);
+    return c.json(updatedApproval);
   } catch (error) {
-    console.error(`Failed to reject ${id}:`, error);
-    return c.json({ error: 'Internal server error' }, 500);
+    console.error('Error approving request:', error);
+    return c.json(errorResponse('Failed to approve request'), 500);
+  }
+});
+
+// Reject a request
+approvalsRoutes.post('/:id/reject', async (c): Promise<Response> => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    if (isNaN(id)) {
+      return c.json(errorResponse('Invalid approval ID'), 400);
+    }
+
+    const { reason } = await c.req.json();
+
+    if (!reason) {
+      return c.json(errorResponse('Reason is required for rejection'), 400);
+    }
+
+    // Get approval to check current status
+    const approval = await getApprovalById(id);
+    if (!approval) {
+      return c.json(errorResponse('Approval not found'), 404);
+    }
+
+    if (approval.status !== 'pending') {
+      return c.json(errorResponse('Approval already processed'), 400);
+    }
+
+    const updatedApproval = await respondToApproval({
+      approvalId: id,
+      status: 'rejected',
+      responseComment: reason,
+    });
+
+    // TODO: Send email notification to requester
+    // TODO: Update deal stage to rejected/failed if applicable
+
+    return c.json(updatedApproval);
+  } catch (error) {
+    console.error('Error rejecting request:', error);
+    return c.json(errorResponse('Failed to reject request'), 500);
   }
 });

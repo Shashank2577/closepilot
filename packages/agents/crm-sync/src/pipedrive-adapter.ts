@@ -31,10 +31,17 @@ export class PipedriveAdapter implements CRMAdapter {
     }
 
     // Dynamic import to avoid requiring pipedrive client if not used
-    const { default: Pipedrive } = await import('pipedrive');
-    this.client = new Pipedrive.Client({
-      apiToken: config.apiKey,
-    });
+    const pipedrive = (await import('pipedrive')) as any;
+    const PipedriveClient = pipedrive.Client || pipedrive.default?.Client;
+    if (PipedriveClient) {
+      this.client = new PipedriveClient({ apiToken: config.apiKey });
+    } else {
+      // Fallback: set apiToken on the module's ApiClient instance
+      this.client = pipedrive.ApiClient ? new pipedrive.ApiClient() : {};
+      if (this.client.authentications) {
+        this.client.authentications['api_key'] = { apiKey: config.apiKey };
+      }
+    }
 
     // Test connection
     const isConnected = await this.testConnection();

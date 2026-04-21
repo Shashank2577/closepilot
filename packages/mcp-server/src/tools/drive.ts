@@ -16,6 +16,52 @@ import {
 } from '../utils/drive-formatter.js';
 
 /**
+ * Drive tools handler map for MCP server integration
+ */
+export const driveToolHandlers: Record<string, (args: any) => Promise<any>> = {
+  list_templates: async (args) => {
+    const templates = await listTemplates(args.type);
+    return { content: [{ type: 'text', text: JSON.stringify(templates) }] };
+  },
+  get_template: async (args) => {
+    const template = await getTemplate(args.templateId);
+    return { content: [{ type: 'text', text: JSON.stringify(template) }] };
+  },
+  generate_document: async (args) => {
+    const result = await generateDocument(args as DocumentGenerationRequest);
+    return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+  },
+  get_document: async (args) => {
+    const doc = await getDocument(args.documentId);
+    return { content: [{ type: 'text', text: JSON.stringify(doc) }] };
+  },
+  update_document_status: async (args) => {
+    const result = await updateDocumentStatus(args.documentId, args.status);
+    return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+  },
+  create_folder: async (args) => {
+    const folder = await createFolder(args.name, args.parentId);
+    return { content: [{ type: 'text', text: JSON.stringify(folder) }] };
+  },
+  list_folder: async (args) => {
+    const items = await listFolder(args.folderId);
+    return { content: [{ type: 'text', text: JSON.stringify(items) }] };
+  },
+  copy_document: async (args) => {
+    const result = await copyDocument(args.documentId, args.folderId, args.newName);
+    return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+  },
+  share_document: async (args) => {
+    const result = await shareDocument(args.documentId, args.email, args.role);
+    return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+  },
+  get_download_url: async (args) => {
+    const url = await getDownloadUrl(args.documentId);
+    return { content: [{ type: 'text', text: JSON.stringify({ url }) }] };
+  },
+};
+
+/**
  * Register Drive integration tools with MCP server
  * Implements Google Drive and Docs API for template-based document generation
  */

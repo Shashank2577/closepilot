@@ -13,11 +13,12 @@
     "db:migrate": "drizzle-kit migrate",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting not configured yet'",
-    "test": "echo 'Tests not configured yet'"
+    "test": "vitest run src/"
   },
   "dependencies": {
     "@closepilot/core": "workspace:*",
     "drizzle-orm": "^0.29.3",
+    "ioredis": "^5.3.2",
     "postgres": "^3.4.3"
   },
   "devDependencies": {

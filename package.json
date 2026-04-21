@@ -5,7 +5,7 @@
   "description": "Closepilot: Autonomous B2B Deal Flow Engine for Service Businesses",
   "scripts": {
     "dev": "pnpm --filter \"@closepilot/*\" --parallel dev",
-    "build": "pnpm --filter \"@closepilot/*\" build",
+    "build": "pnpm --filter \"@closepilot/*\" --filter \"proposal\" build",
     "test": "pnpm --filter \"@closepilot/*\" --parallel test",
     "lint": "pnpm --filter \"@closepilot/*\" --parallel lint",
     "db:studio": "pnpm --filter @closepilot/db db:studio",

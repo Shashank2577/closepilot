@@ -219,6 +219,7 @@ export class AgentDispatcher {
       success: true,
       nextStage: this.getNextStageForAgent(agentType),
       requiresApproval: false,
+      durationMs: 100,
       metadata: {
         agentType,
         executionId: `${deal.id}-${agentType}-${Date.now()}`,

@@ -14,12 +14,46 @@ export async function createDeal(input: NewDeal): Promise<Deal> {
   return deal as Deal;
 }
 
-export async function getDeals(filters?: any, pagination?: any, sorting?: any): Promise<Deal[]> {
-  throw new Error('Not implemented - Jules J-101 will implement');
+export async function getDeals(
+  filters?: { stage?: DealStage },
+  pagination?: { limit?: number; offset?: number },
+  sorting?: { sortBy?: keyof Deal; sortOrder?: 'asc' | 'desc' }
+): Promise<Deal[]> {
+  const db = getDb();
+  const limit = pagination?.limit ?? 50;
+  const offset = pagination?.offset ?? 0;
+
+  const conditions = filters?.stage ? [eq(deals.stage, filters.stage as string)] : [];
+
+  const orderCol = sorting?.sortBy ?? 'createdAt';
+  const orderDir = sorting?.sortOrder ?? 'desc';
+
+  const col = deals[orderCol as keyof typeof deals] as any;
+  const order = orderDir === 'asc' ? col : desc(col);
+
+  const results = await db
+    .select()
+    .from(deals)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(order)
+    .limit(limit)
+    .offset(offset);
+
+  return results as Deal[];
 }
 
 export async function getDealStats(): Promise<Record<string, number>> {
-  throw new Error('Not implemented - Jules J-101 will implement');
+  const db = getDb();
+  const results = await db
+    .select({ stage: deals.stage })
+    .from(deals);
+
+  const counts: Record<string, number> = {};
+  for (const row of results) {
+    const stage = row.stage ?? 'unknown';
+    counts[stage] = (counts[stage] ?? 0) + 1;
+  }
+  return counts;
 }
 
 export async function getDeal(dealId: string): Promise<Deal | null> {

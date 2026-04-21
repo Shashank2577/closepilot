@@ -12,3 +12,21 @@ export * from './types/calendar';
 
 // Drive integration types
 export * from './types/drive';
+
+// Analytics types
+export * from './types/analytics.js';
+
+// Agent base class
+export * from './agent';
+
+// Logger
+export * from './logger';
+
+// Secrets provider
+export * from './secrets';
+
+// RBAC types
+export * from './types/rbac';
+
+// Environment loading utilities
+export * from './env';

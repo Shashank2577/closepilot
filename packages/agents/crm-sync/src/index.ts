@@ -1,4 +1,5 @@
-import type { Deal, DealStage, AgentType, CrmSyncContext } from '@closepilot/core';
+import { DealStage, secrets } from '@closepilot/core';
+import type { Deal, AgentType, CrmSyncContext } from '@closepilot/core';
 import { DealStoreTools } from '@closepilot/mcp-client';
 import { HubSpotAdapter } from './hubspot-adapter.js';
 import { SalesforceAdapter } from './salesforce-adapter.js';
@@ -57,7 +58,7 @@ export class CRMSyncAgent {
       await this.dealStoreTools.updateDeal(dealId, {
         crmId: result.crmDealId,
         crmSyncedAt: result.syncedAt,
-        stage: 'completed',
+        stage: DealStage.COMPLETED,
       });
 
       return result;
@@ -66,7 +67,7 @@ export class CRMSyncAgent {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       await this.dealStoreTools.updateDeal(dealId, {
-        stage: 'failed',
+        stage: DealStage.FAILED,
       });
 
       return {
@@ -86,7 +87,7 @@ export class CRMSyncAgent {
   private async initializeCRMAdapter(context: CrmSyncContext): Promise<CRMAdapter> {
     const config: CRMConfig = {
       type: context.crmSystem,
-      apiKey: process.env[`${context.crmSystem.toUpperCase()}_API_KEY`],
+      apiKey: process.env[`${context.crmSystem.toUpperCase()}_API_KEY`], // Leaving these as process.env for now because they are dynamic and not currently in SecretProvider
       oauthToken: process.env[`${context.crmSystem.toUpperCase()}_OAUTH_TOKEN`],
       environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
       retryConfig: {
@@ -226,7 +227,7 @@ export class CRMSyncAgent {
    * Query deals pending CRM sync
    */
   async getPendingDeals(): Promise<Deal[]> {
-    return await this.dealStoreTools.queryDealsByStage('crm_sync');
+    return await this.dealStoreTools.queryDealsByStage(DealStage.CRM_SYNC);
   }
 
   /**
