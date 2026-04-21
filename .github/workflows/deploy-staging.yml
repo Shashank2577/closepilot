@@ -1,0 +1,88 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [staging]
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  migrate:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Run Migrations
+        run: flyctl ssh console -c fly.api.staging.toml --command 'node dist/migrate.js'
+      - name: Notify Slack on Failure
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"❌ Staging deploy failed in `migrate` step. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"}' $SLACK_WEBHOOK_URL
+
+  deploy-api:
+    name: Deploy API
+    needs: migrate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy API
+        run: flyctl deploy -c fly.api.staging.toml --remote-only --build-arg GIT_SHA=${{ github.sha }} --build-arg BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      - name: Notify Slack on Failure
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"❌ Staging deploy failed in `deploy-api` step. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"}' $SLACK_WEBHOOK_URL
+
+  deploy-mcp:
+    name: Deploy MCP
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy MCP
+        run: flyctl deploy -c fly.mcp.staging.toml --remote-only
+      - name: Notify Slack on Failure
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"❌ Staging deploy failed in `deploy-mcp` step. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"}' $SLACK_WEBHOOK_URL
+
+  deploy-web:
+    name: Deploy Web
+    needs: deploy-mcp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy Web
+        run: flyctl deploy -c fly.web.staging.toml --remote-only
+      - name: Notify Slack on Failure
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"❌ Staging deploy failed in `deploy-web` step. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"}' $SLACK_WEBHOOK_URL
+
+  smoke:
+    name: Smoke Tests
+    needs: deploy-web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API Health
+        run: curl -f https://closepilot-api-staging.fly.dev/api/health || (echo "Health check failed" && exit 1)
+      - name: Check API Version
+        run: curl -f https://closepilot-api-staging.fly.dev/api/version || (echo "Version check failed" && exit 1)
+      - name: Notify Slack on Failure
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"❌ Staging deploy failed in `smoke` tests. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"}' $SLACK_WEBHOOK_URL

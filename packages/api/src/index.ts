@@ -4,6 +4,7 @@ import { dealsRoutes } from './routes/deals.js';
 import { activitiesRoutes } from './routes/activities.js';
 import { approvalsRoutes } from './routes/approvals.js';
 import { analyticsRoutes } from './routes/analytics.js';
+import { versionRoutes } from './routes/version.js';
 
 /**
  * Closepilot API Server
@@ -29,6 +30,7 @@ app.route('/api/deals', dealsRoutes);
 app.route('/api/activities', activitiesRoutes);
 app.route('/api/approvals', approvalsRoutes);
 app.route('/api/analytics', analyticsRoutes);
+app.route('/api/version', versionRoutes);
 
 import { serve } from '@hono/node-server';
 
