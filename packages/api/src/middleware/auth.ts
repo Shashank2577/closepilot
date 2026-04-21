@@ -14,7 +14,11 @@ export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => 
   const token = authHeader.split(' ')[1];
 
   try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'default_secret');
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return c.json(errorResponse('Server misconfiguration: JWT_SECRET not set'), 500);
+    }
+    const secret = new TextEncoder().encode(jwtSecret);
     const { payload } = await jwtVerify(token, secret);
 
     // Attach user to context
