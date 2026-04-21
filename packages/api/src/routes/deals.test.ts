@@ -219,8 +219,17 @@ describe('Deals Routes', () => {
       const mockDeal = { id: '1', stage: DealStage.FAILED };
       vi.mocked(updateDealStage).mockResolvedValue(mockDeal as any);
 
+      const { SignJWT } = await import('jose');
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'default_secret');
+      const token = await new SignJWT({ role: 'ADMIN' })
+        .setProtectedHeader({ alg: 'HS256' })
+        .sign(secret);
+
       const req = new Request('http://localhost/api/deals/1', {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       const res = await app.request(req);
 

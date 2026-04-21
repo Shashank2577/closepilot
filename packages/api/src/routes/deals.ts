@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { Deal } from '@closepilot/core';
-import { DealStage } from '@closepilot/core';
+import { DealStage, UserRole } from '@closepilot/core';
 import { errorResponse } from '../lib/errors.js';
+import { requireRole } from '../middleware/auth.js';
+import type { AppContext } from '../types.js';
 import {
   getDeals,
   getDealStats,
@@ -67,7 +69,7 @@ const searchSimilarDealsSchema = z.object({
   limit: z.string().transform((val) => (val ? parseInt(val, 10) : 5)).optional(),
 });
 
-export const dealsRoutes = new Hono();
+export const dealsRoutes = new Hono<AppContext>();
 
 
 // GET /api/deals - List deals with filters
@@ -241,7 +243,7 @@ dealsRoutes.patch('/:id/stage', async (c): Promise<Response> => {
 });
 
 // DELETE /api/deals/:id - Soft delete a deal (set stage to 'failed')
-dealsRoutes.delete('/:id', async (c): Promise<Response> => {
+dealsRoutes.delete('/:id', requireRole([UserRole.ADMIN, UserRole.MANAGER]), async (c): Promise<Response> => {
   try {
     const id = c.req.param('id');
 

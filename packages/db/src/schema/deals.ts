@@ -1,4 +1,5 @@
-import { pgTable, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, varchar, integer } from 'drizzle-orm/pg-core';
+import { organizations } from './users';
 
 /**
  * Deals table - stores all B2B deal opportunities
@@ -38,6 +39,9 @@ export const deals = pgTable('deals', {
   source: varchar('source', { length: 50 }).notNull(),
   assignedAgent: varchar('assigned_agent', { length: 255 }),
   approvalStatus: varchar('approval_status', { length: 50 }),
+
+  // Data isolation per tenant
+  orgId: integer('org_id').references(() => organizations.id),
 });
 
 export type Deal = typeof deals.$inferSelect;
