@@ -7,6 +7,7 @@ import { generateContent } from './content-generator';
 export class ProposalAgent {
   async process(input: AgentInput<ProposalContext>): Promise<AgentOutput<Deal>> {
     const { deal, context } = input;
+    const startMs = Date.now();
 
     if (!deal.projectScope) {
       return {
@@ -14,6 +15,7 @@ export class ProposalAgent {
         success: false,
         errors: ['Deal does not have a defined project scope. Cannot generate proposal.'],
         requiresApproval: false,
+        durationMs: Date.now() - startMs,
       };
     }
 
@@ -73,9 +75,10 @@ export class ProposalAgent {
         dealId: deal.id,
         success: true,
         data: updatedDeal,
-        nextStage: requiresApproval ? undefined : DealStage.CRM_SYNC, // If requires approval, it might stay in PROPOSAL or go to a specific approval stage
+        nextStage: requiresApproval ? undefined : DealStage.CRM_SYNC,
         requiresApproval,
         approvalReason: requiresApproval ? `Total pricing ($${pricing.total}) exceeds $50,000 threshold.` : undefined,
+        durationMs: Date.now() - startMs,
       };
 
     } catch (error: any) {
@@ -84,6 +87,7 @@ export class ProposalAgent {
         success: false,
         errors: [error.message || 'An unknown error occurred during proposal generation.'],
         requiresApproval: false,
+        durationMs: Date.now() - startMs,
       };
     }
   }
