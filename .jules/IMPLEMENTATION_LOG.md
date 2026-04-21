@@ -1,8 +1,7 @@
 # Implementation Log
-
-- Created `packages/api/src/lib/errors.ts` to host the common `errorResponse` function returning `{ error, code, details }`.
-- Refactored `deals.ts` to import `errorResponse`, replace `z.enum` with `z.nativeEnum(DealStage)`, and explicitly set all handler returns to `Promise<Response>`.
-- Refactored `approvals.ts` and `activities.ts` to use `errorResponse` and explicitly type returns.
-- Updated `deals.test.ts` to check against the normalized error shapes and use `DealStage` enum references correctly.
-- Addressed code review feedback: deleted throwaway JS script files (`update_deals.js` etc.) and fixed missing `DealStage` imports in the tests. Reverted unintended OS lockfile changes in `pnpm-lock.yaml`.
-- Verified typechecking and vitest passing for `@closepilot/api`.
+1. Created RBAC types in `packages/core/src/types/rbac.ts` and exported in `packages/core/src/index.ts`.
+2. Created schema in `packages/db/src/schema/users.ts` and added `orgId` to `deals.ts`.
+3. Added AuthMiddleware and requireRole in `packages/api/src/middleware/auth.ts`. Created `packages/api/src/types.ts`.
+4. Protected API Route for `DELETE /api/deals/:id`. Fixed API test to include JWT.
+5. Added Web Hooks in `packages/web/lib/auth/roles.ts` and `UserContext.tsx`.
+6. Modified `DealModal.tsx` to use hook and restrict visibility of delete button.

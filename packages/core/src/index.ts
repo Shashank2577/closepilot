@@ -21,3 +21,6 @@ export * from './logger';
 
 // Secrets provider
 export * from './secrets';
+
+// RBAC types
+export * from './types/rbac';
