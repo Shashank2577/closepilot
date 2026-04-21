@@ -10,7 +10,7 @@ vi.mock('../../../lib/auth/oauth', () => ({
 
 describe('SignIn Route', () => {
   it('should redirect to Google auth url and set cookies', async () => {
-    const response = await GET();
+    const response = await GET({} as any);
 
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('http://mock-auth-url/');

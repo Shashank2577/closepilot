@@ -26,7 +26,7 @@ describe('KanbanBoard', () => {
   it('renders columns and fetches deals', async () => {
     render(
       <QueryClientProvider client={queryClient}>
-        <KanbanBoard />
+        <KanbanBoard deals={[]} onDealUpdate={() => {}} />
       </QueryClientProvider>
     );
 

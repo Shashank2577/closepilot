@@ -4,27 +4,7 @@ import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApprovalModal } from './ApprovalModal';
-
-interface Approval {
-  id: number;
-  dealId: number;
-  approverEmail: string;
-  itemType: string;
-  itemId: string;
-  status: 'pending' | 'approved' | 'rejected';
-  requestComment?: string;
-  responseComment?: string;
-  respondedAt?: string;
-  createdAt: string;
-  deal?: {
-    id: number;
-    leadName: string;
-    leadCompany?: string;
-    leadEmail: string;
-    stage: string;
-    proposal?: any;
-  };
-}
+import { fetchPendingApprovals, type Approval } from '../../lib/api';
 
 export function ApprovalList() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -39,11 +19,7 @@ export function ApprovalList() {
   const fetchApprovals = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/approvals/pending');
-      if (!response.ok) {
-        throw new Error('Failed to fetch approvals');
-      }
-      const data = await response.json();
+      const data = await fetchPendingApprovals();
       setApprovals(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');

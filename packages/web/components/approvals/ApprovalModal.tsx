@@ -2,27 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-
-interface Approval {
-  id: number;
-  dealId: number;
-  approverEmail: string;
-  itemType: string;
-  itemId: string;
-  status: 'pending' | 'approved' | 'rejected';
-  requestComment?: string;
-  responseComment?: string;
-  respondedAt?: string;
-  createdAt: string;
-  deal?: {
-    id: number;
-    leadName: string;
-    leadCompany?: string;
-    leadEmail: string;
-    stage: string;
-    proposal?: any;
-  };
-}
+import { approveRequest, rejectRequest, type Approval } from '../../lib/api';
 
 interface ApprovalModalProps {
   approval: Approval;
@@ -45,24 +25,13 @@ export function ApprovalModal({ approval, onClose, onUpdate }: ApprovalModalProp
       setSubmitting(true);
       setError(null);
 
-      const endpoint = action === 'approve' ? '/approve' : '/reject';
-      const body = action === 'approve'
-        ? { approverComment: comment || null }
-        : { reason: comment };
-
-      const response = await fetch(`/api/approvals/${approval.id}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to submit response');
+      if (action === 'approve') {
+        await approveRequest(approval.id, comment || undefined);
+      } else {
+        await rejectRequest(approval.id, comment);
       }
 
-      const status = action === 'approve' ? 'approved' : 'rejected';
-      onUpdate(approval.id, status);
+      onUpdate(approval.id, action === 'approve' ? 'approved' : 'rejected');
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -154,10 +123,12 @@ export function ApprovalModal({ approval, onClose, onUpdate }: ApprovalModalProp
                   <p className="text-sm font-medium text-gray-900">
                     {approval.deal.proposal.title}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Total: {approval.deal.proposal.pricing.currency}{' '}
-                    {approval.deal.proposal.pricing.total.toLocaleString()}
-                  </p>
+                  {approval.deal.proposal.pricing && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Total: {approval.deal.proposal.pricing.currency}{' '}
+                      {approval.deal.proposal.pricing.total.toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
