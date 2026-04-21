@@ -19,6 +19,24 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── BullMQ Agent Worker ────────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: packages/agents/orchestrator/Dockerfile
+    container_name: closepilot-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://closepilot:closepilot_dev@postgres:5432/closepilot
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   # ── REST API ───────────────────────────────────────────────────────────────
   api:
     build:

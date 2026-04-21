@@ -14,9 +14,9 @@ export default function HomePage() {
   const [selectedStage, setSelectedStage] = useState<DealStage | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: deals = [], isLoading, error, refetch } = useQuery({
+  const { data: deals = [], isLoading, error, refetch } = useQuery<Deal[]>({
     queryKey: ['deals'],
-    queryFn: fetchDeals,
+    queryFn: () => fetchDeals(),
     refetchInterval: 30000, // Poll every 30 seconds (will be replaced with SSE)
   });
 

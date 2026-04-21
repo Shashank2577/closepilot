@@ -65,9 +65,8 @@ export function useActivityStream({
     disconnect();
 
     // Build URL with dealId filter if provided
-    // Use a direct API URL - in production this should use environment variable
-    const apiOrigin = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const url = new URL('/api/activities/stream', apiOrigin);
+    // Use a relative URL — Next.js rewrites proxy /api/* to the Hono backend
+    const url = new URL('/api/activities/stream', window.location.origin);
     if (dealId) {
       url.searchParams.set('dealId', String(dealId));
     }
