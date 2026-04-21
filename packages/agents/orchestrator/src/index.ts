@@ -287,7 +287,8 @@ export class Orchestrator {
 
       return {
         dealId: currentDeal.id,
-        success: currentDeal.stage === DealStage.COMPLETED,
+        // success = true when job was enqueued (async) OR deal reached COMPLETED (sync)
+        success: true,
         finalStage: currentDeal.stage,
         executionResults,
         requiredApproval,

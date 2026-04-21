@@ -7,7 +7,6 @@ import { AgentType, EnrichmentContext, ProposalContext, CrmSyncContext } from '@
 import { startIngestionAgent } from '@closepilot/agents-ingestion';
 import { EnrichmentAgent } from '@closepilot/agent-enrichment';
 import { ScopingAgent } from '@closepilot/agent-scoping';
-// @ts-ignore
 import { ProposalAgent } from 'proposal';
 import { CRMSyncAgent } from '@closepilot/agent-crm-sync';
 import { DealStoreTools, DealStoreClient } from '@closepilot/mcp-client';

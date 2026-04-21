@@ -1,31 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock BullMQ
-vi.mock('bullmq', () => {
-  const add = vi.fn().mockResolvedValue({ id: '1' });
-  return {
-    Queue: function() {
-      return {
-        add
-      };
-    },
-    // We export add here so we can access it in the test
-    __mockAdd: add
-  };
-});
-
-// Mock redis connection
+// Mock redis connection before queue import
 vi.mock('./redis.js', () => ({
   redisConnection: {},
 }));
 
+// Mock BullMQ — use a stable spy on the instance's add method
+const mockAdd = vi.fn().mockResolvedValue({ id: '1' });
+vi.mock('bullmq', () => ({
+  Queue: vi.fn().mockImplementation(() => ({ add: mockAdd })),
+}));
+
 // Import after mocks
 import { enqueueAgentJob, agentQueue } from './queue.js';
-import * as bullmq from 'bullmq';
 
 describe('Queue Setup', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockAdd.mockClear();
   });
 
   it('should enqueue an agent job with correct parameters', async () => {
@@ -36,7 +27,7 @@ describe('Queue Setup', () => {
 
     await enqueueAgentJob(job);
 
-    expect((bullmq as any).__mockAdd).toHaveBeenCalledWith(
+    expect(mockAdd).toHaveBeenCalledWith(
       'RunEnrichment',
       job,
       expect.objectContaining({
@@ -46,6 +37,21 @@ describe('Queue Setup', () => {
           delay: 2000,
         },
       })
+    );
+  });
+
+  it('should apply retry config for any job type', async () => {
+    const job = {
+      type: 'RunCRMSync' as const,
+      dealId: 'deal-456',
+    };
+
+    await enqueueAgentJob(job);
+
+    expect(mockAdd).toHaveBeenCalledWith(
+      'RunCRMSync',
+      job,
+      expect.objectContaining({ attempts: 3 })
     );
   });
 });
