@@ -7,6 +7,7 @@ import { AuditLog, AuditEventType } from './audit-log.js';
 import { PerformanceReporter, ReportFormat } from './reporting.js';
 import { enqueueAgentJob } from './queue.js';
 import { AgentJobType } from './jobs.js';
+import { ChaseScheduler } from './chase-scheduler.js';
 
 /**
  * Orchestrator configuration
@@ -63,6 +64,7 @@ export class Orchestrator {
   private running = false;
   private healthCheckTimer?: NodeJS.Timeout;
   private reportTimer?: NodeJS.Timeout;
+  private chaseInterval?: NodeJS.Timeout;
   private activeDeals: Map<string, Promise<DealProcessingResult>>;
 
   private static readonly DEFAULT_CONFIG: OrchestratorConfig = {
@@ -116,6 +118,17 @@ export class Orchestrator {
     if (this.config.enableReporting) {
       this.startReportingRoutine();
     }
+
+    // Chase daily sweep — run immediately then every hour
+    const chaseScheduler = new ChaseScheduler();
+    chaseScheduler.runSweep().catch((err: unknown) =>
+      console.error('[Orchestrator] Initial chase sweep failed:', err)
+    );
+    this.chaseInterval = setInterval(() => {
+      chaseScheduler.runSweep().catch((err: unknown) =>
+        console.error('[Orchestrator] Hourly chase sweep failed:', err)
+      );
+    }, 60 * 60 * 1000);
   }
 
   /**
@@ -134,6 +147,9 @@ export class Orchestrator {
     }
     if (this.reportTimer) {
       clearInterval(this.reportTimer);
+    }
+    if (this.chaseInterval) {
+      clearInterval(this.chaseInterval);
     }
 
     // Wait for active deals to complete
@@ -227,12 +243,23 @@ export class Orchestrator {
         }
 
         // Refactored: Instead of direct agent execution, enqueue a job for the worker
-        const jobTypeMap: Record<DealStage, AgentJobType | null> = {
-          [DealStage.INGESTION]: 'RunIngestion',
+        const jobTypeMap: Partial<Record<DealStage, AgentJobType | null>> = {
+          [DealStage.INGESTION]: 'RunEnrichment',
           [DealStage.ENRICHMENT]: 'RunEnrichment',
+          [DealStage.QUALIFIED]: 'RunOutreach',
+          [DealStage.OUTREACH_SENT]: null,
+          [DealStage.MEETING_BOOKED]: 'RunScoping',
           [DealStage.SCOPING]: 'RunScoping',
           [DealStage.PROPOSAL]: 'RunProposal',
+          [DealStage.PROPOSAL_SENT]: 'RunChase',
+          [DealStage.FOLLOW_UP_1]: 'RunChase',
+          [DealStage.FOLLOW_UP_2]: 'RunChase',
+          [DealStage.NEGOTIATING]: 'RunChase',
+          [DealStage.PROPOSAL_REVISED]: 'RunProposal',
           [DealStage.CRM_SYNC]: 'RunCRMSync',
+          [DealStage.CLOSED_WON]: 'RunCRMSync',
+          [DealStage.CLOSED_LOST]: null,
+          [DealStage.STALLED]: 'RunChase',
           [DealStage.COMPLETED]: null,
           [DealStage.FAILED]: null,
         };
@@ -540,3 +567,5 @@ export type {
 
 export { enqueueAgentJob } from './queue.js';
 export type { AgentJob, AgentJobType } from './jobs.js';
+export { ChaseScheduler } from './chase-scheduler.js';
+export type { ChaseSchedulerDeps } from './chase-scheduler.js';

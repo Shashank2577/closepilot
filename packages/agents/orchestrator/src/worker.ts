@@ -5,10 +5,11 @@ import { AgentType, EnrichmentContext, ProposalContext, CrmSyncContext, DealStag
 import { updateDealStage } from '@closepilot/db';
 
 // Import agents
-import { startIngestionAgent } from '@closepilot/agents-ingestion';
 import { EnrichmentAgent } from '@closepilot/agent-enrichment';
+import { OutreachAgent } from '@closepilot/agent-outreach';
 import { ScopingAgent } from '@closepilot/agent-scoping';
 import { ProposalAgent } from 'proposal';
+import { ChaseAgent } from '@closepilot/agent-chase';
 import { CRMSyncAgent } from '@closepilot/agent-crm-sync';
 import { DealStoreTools, DealStoreClient } from '@closepilot/mcp-client';
 import { enqueueAgentJob } from './queue.js';
@@ -28,14 +29,6 @@ const worker = new Worker<AgentJob>(
       let result: any;
 
       switch (type) {
-        case 'RunIngestion':
-          // Ingestion is usually the start, so it might not have a specific dealId yet
-          // or it might be triggered by a specific deal/thread.
-          await startIngestionAgent({
-            anthropicApiKey,
-          });
-          break;
-
         case 'RunEnrichment': {
           const enrichmentAgent = new EnrichmentAgent();
           const deal = await dealStoreTools.getDeal(dealId);
@@ -52,6 +45,28 @@ const worker = new Worker<AgentJob>(
             deal,
             context
           });
+          break;
+        }
+
+        case 'RunOutreach': {
+          const outreachAgent = new OutreachAgent(dealStoreClient);
+          const deal = await dealStoreTools.getDeal(dealId);
+          if (!deal) throw new Error(`Deal ${dealId} not found`);
+          const outreachResult = await outreachAgent.process({
+            dealId,
+            orgId: String(job.data.payload?.orgId || ''),
+            deal,
+          });
+          result = {
+            success: outreachResult.success,
+            data: {
+              ...deal,
+              approvalStatus: outreachResult.requiresApproval ? 'pending' : deal.approvalStatus,
+              outreachSentAt: outreachResult.mode === 'send' ? new Date() : deal.outreachSentAt,
+            },
+            errors: outreachResult.errors,
+            nextStage: outreachResult.suggestedStage,
+          };
           break;
         }
 
@@ -81,6 +96,25 @@ const worker = new Worker<AgentJob>(
           break;
         }
 
+        case 'RunChase': {
+          const chaseAgent = new ChaseAgent({ mcpClient: dealStoreClient });
+          const deal = await dealStoreTools.getDeal(dealId);
+          if (!deal) throw new Error(`Deal ${dealId} not found`);
+          const chaseResult = await chaseAgent.processDeal(deal as any);
+          result = {
+            success: !chaseResult.errors?.length,
+            data: {
+              ...deal,
+              approvalStatus: chaseResult.approvalRequest ? 'pending' : deal.approvalStatus,
+              followUpCount: chaseResult.stale?.followUpNumber || deal.followUpCount,
+              lastFollowUpAt: chaseResult.approvalRequest ? new Date() : deal.lastFollowUpAt,
+            },
+            errors: chaseResult.errors,
+            nextStage: chaseResult.stageRecommendation?.recommendedStage,
+          };
+          break;
+        }
+
         case 'RunCRMSync': {
           const crmSyncAgent = new CRMSyncAgent(anthropicApiKey, dealStoreTools);
           const context: CrmSyncContext = {
@@ -97,10 +131,16 @@ const worker = new Worker<AgentJob>(
           throw new Error(`Unknown job type: ${type}`);
       }
 
+      if (dealId && result?.success && result.data && typeof result.data === 'object') {
+        await dealStoreTools.updateDeal(dealId, result.data).catch((err: unknown) => {
+          console.error(`[Worker] Failed to persist agent output for ${dealId}:`, err);
+        });
+      }
+
       // Map job type → the stage the deal moves INTO after this job completes
       const stageAfterJob: Record<string, DealStage> = {
-        RunIngestion:  DealStage.ENRICHMENT,
         RunEnrichment: DealStage.SCOPING,
+        RunOutreach:   DealStage.OUTREACH_SENT,
         RunScoping:    DealStage.PROPOSAL,
         RunProposal:   DealStage.CRM_SYNC,
         RunCRMSync:    DealStage.COMPLETED,
@@ -113,13 +153,33 @@ const worker = new Worker<AgentJob>(
         );
       }
 
+      // Chase stage advancement uses the agent's dynamic recommendation
+      if (type === 'RunChase' && result?.success && result.nextStage) {
+        await updateDealStage(
+          dealId,
+          result.nextStage as DealStage,
+          `Chase agent: advancing to ${result.nextStage}`
+        ).catch((err: unknown) =>
+          console.error(`[Worker] Chase stage update failed for deal ${dealId}:`, err)
+        );
+      }
+
       // After successful agent execution, check for the next stage and enqueue it.
       if (result && result.success && result.nextStage) {
         const nextJobTypeMap: Record<string, string> = {
           'enrichment': 'RunEnrichment',
+          'qualified': 'RunOutreach',
+          'outreach-sent': 'RunOutreach',
+          'meeting-booked': 'RunScoping',
           'scoping':    'RunScoping',
           'proposal':   'RunProposal',
+          'proposal-sent': 'RunChase',
+          'follow-up-1': 'RunChase',
+          'follow-up-2': 'RunChase',
+          'negotiating': 'RunChase',
+          'proposal-revised': 'RunProposal',
           'crm_sync':   'RunCRMSync',
+          'closed-won': 'RunCRMSync',
         };
 
         const nextJobType = nextJobTypeMap[result.nextStage];

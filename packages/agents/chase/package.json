@@ -1,0 +1,29 @@
+{
+  "name": "@closepilot/agent-chase",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chase Agent - Detects stalled proposal deals and drafts contextual follow-ups",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "vitest run",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@closepilot/mcp-client": "workspace:*",
+    "cron": "^3.1.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

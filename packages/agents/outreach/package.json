@@ -1,0 +1,26 @@
+{
+  "name": "@closepilot/agent-outreach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Outreach Agent - drafts personalized outreach, finds calendar slots, and books meetings",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'Linting not configured yet'",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@closepilot/core": "workspace:*",
+    "@closepilot/mcp-client": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
