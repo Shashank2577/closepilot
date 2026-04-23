@@ -1,21 +1,14 @@
 import { UserRole } from '@closepilot/core';
-import { useUser } from './UserContext';
 
-export function useRBAC(requiredRole: UserRole): { hasAccess: boolean; isLoading: boolean } {
-  const { user, isLoading } = useUser();
+export function hasRole(userRole: UserRole | undefined, allowedRoles: UserRole[]): boolean {
+  if (!userRole) return false;
+  return allowedRoles.includes(userRole);
+}
 
-  let hasAccess = false;
+export function canDeleteDeal(userRole: UserRole | undefined): boolean {
+  return hasRole(userRole, [UserRole.ADMIN, UserRole.MANAGER]);
+}
 
-  if (user) {
-    // ADMIN always has access; MANAGER has access to REP-required routes (role hierarchy)
-    const roleHierarchy: UserRole[] = [UserRole.REP, UserRole.MANAGER, UserRole.ADMIN];
-    const userLevel = roleHierarchy.indexOf(user.role);
-    const requiredLevel = roleHierarchy.indexOf(requiredRole);
-    hasAccess = userLevel >= requiredLevel;
-  }
-
-  return {
-    hasAccess,
-    isLoading
-  };
+export function canEditDeal(_userRole: UserRole | undefined): boolean {
+  return _userRole !== undefined;
 }
