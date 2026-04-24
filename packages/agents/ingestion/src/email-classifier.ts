@@ -1,11 +1,12 @@
-import Anthropic from '@anthropic-ai/sdk';
-import type { EmailMessage, EmailContext } from '@closepilot/core';
+import { createLLMClient, parseJsonFromText, type EmailMessage, type EmailContext, type LLMClient, type LLMProvider } from '@closepilot/core';
 
 /**
  * Configuration for the email classifier
  */
 export interface ClassifierConfig {
-  anthropicApiKey: string;
+  anthropicApiKey?: string;
+  apiKey?: string;
+  provider?: LLMProvider;
   model?: string;
   maxTokens?: number;
 }
@@ -25,15 +26,16 @@ export interface ClassificationResult {
  * Uses Claude AI to classify emails as lead inquiries or non-leads
  */
 export class EmailClassifier {
-  private anthropic: Anthropic;
-  private model: string;
+  private llm: LLMClient;
   private maxTokens: number;
 
   constructor(config: ClassifierConfig) {
-    this.anthropic = new Anthropic({
-      apiKey: config.anthropicApiKey,
+    this.llm = createLLMClient({
+      provider: config.provider,
+      apiKey: config.apiKey || config.anthropicApiKey,
+      model: config.model,
+      maxTokens: config.maxTokens || 1024,
     });
-    this.model = config.model || 'claude-3-5-sonnet-20241022';
     this.maxTokens = config.maxTokens || 1024;
   }
 
@@ -44,18 +46,10 @@ export class EmailClassifier {
     const prompt = this.buildClassificationPrompt(email);
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: this.model,
-        max_tokens: this.maxTokens,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
+      const text = await this.llm.generateText({
+        prompt,
+        maxTokens: this.maxTokens,
       });
-
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
       return this.parseClassificationResponse(text);
     } catch (error) {
       console.error('Error classifying email:', error);
@@ -83,18 +77,10 @@ export class EmailClassifier {
     const prompt = this.buildExtractionPrompt(email);
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: this.model,
-        max_tokens: this.maxTokens,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
+      const text = await this.llm.generateText({
+        prompt,
+        maxTokens: this.maxTokens,
       });
-
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
       return this.parseExtractionResponse(text);
     } catch (error) {
       console.error('Error extracting lead info:', error);
@@ -109,18 +95,10 @@ export class EmailClassifier {
     const prompt = this.buildContextExtractionPrompt(email);
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: this.model,
-        max_tokens: this.maxTokens,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
+      const text = await this.llm.generateText({
+        prompt,
+        maxTokens: this.maxTokens,
       });
-
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
       return this.parseContextResponse(text);
     } catch (error) {
       console.error('Error extracting context:', error);
@@ -216,13 +194,7 @@ Respond in JSON format:
    */
   private parseClassificationResponse(text: string): ClassificationResult {
     try {
-      // Extract JSON from response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = parseJsonFromText<any>(text);
       return {
         isLeadInquiry: parsed.isLeadInquiry || false,
         confidence: parsed.confidence || 0,
@@ -243,11 +215,7 @@ Respond in JSON format:
    */
   private parseExtractionResponse(text: string): any {
     try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-      return JSON.parse(jsonMatch[0]);
+      return parseJsonFromText<any>(text);
     } catch (error) {
       console.error('Error parsing extraction response:', error);
       return {};
@@ -259,11 +227,7 @@ Respond in JSON format:
    */
   private parseContextResponse(text: string): EmailContext {
     try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-      return JSON.parse(jsonMatch[0]);
+      return parseJsonFromText<EmailContext>(text);
     } catch (error) {
       console.error('Error parsing context response:', error);
       return {

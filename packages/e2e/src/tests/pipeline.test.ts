@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DealStage } from '@closepilot/core';
 import { cleanDatabase, seedDeal, waitForStage } from '../helpers/db.js';
-import { getDb, deals } from '@closepilot/db';
-import { eq } from 'drizzle-orm';
+import { getDb, deals, eq } from '@closepilot/db';
 import { MOCK_EXTRACTED_LEAD, MOCK_ENRICHMENT, MOCK_SCOPING } from '../fixtures/claude-responses.js';
 import { SAMPLE_LEAD_EMAIL } from '../fixtures/lead-email.js';
 

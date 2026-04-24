@@ -54,3 +54,6 @@ scripts/monitor-jules.sh
 
 # OMC runtime state
 .omc/state/
+
+# Session handoffs (local-only, not for version control)
+.handoffs/

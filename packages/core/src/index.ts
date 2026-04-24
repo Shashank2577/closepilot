@@ -30,3 +30,6 @@ export * from './types/rbac';
 
 // Environment loading utilities
 export * from './env';
+
+// Provider-neutral LLM utilities
+export * from './llm';

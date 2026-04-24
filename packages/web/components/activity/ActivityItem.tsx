@@ -1,4 +1,7 @@
+'use client';
+
 import React from 'react';
+import { motion } from 'framer-motion';
 import { ActivityIcon } from './ActivityIcon';
 
 interface Activity {
@@ -33,7 +36,12 @@ export function ActivityItem({ activity, showDealLink = false }: ActivityItemPro
   const timeAgo = new Date(activity.createdAt).toLocaleString();
 
   return (
-    <div className="flex items-start space-x-3 p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+    <motion.div
+      className="flex items-start space-x-3 p-4 bg-surface-raised rounded-xl border border-border hover:shadow-md hover:border-border-hover transition-all duration-200"
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+    >
       {/* Icon */}
       <ActivityIcon agentType={activity.agentType} size={40} />
 
@@ -64,7 +72,7 @@ export function ActivityItem({ activity, showDealLink = false }: ActivityItemPro
 
         {/* Activity type badge */}
         <div className="mt-2">
-          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700">
+          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary-50 text-primary-700">
             {activity.activityType.replace('_', ' ').toUpperCase()}
           </span>
           {showDealLink && (
@@ -77,6 +85,6 @@ export function ActivityItem({ activity, showDealLink = false }: ActivityItemPro
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

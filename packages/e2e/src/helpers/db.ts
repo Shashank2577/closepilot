@@ -1,6 +1,5 @@
-import { getDb, deals, activities, approvals } from '@closepilot/db';
+import { getDb, deals, activities, approvals, eq } from '@closepilot/db';
 import { DealStage } from '@closepilot/core';
-import { eq } from 'drizzle-orm';
 
 export async function cleanDatabase() {
   const db = getDb();

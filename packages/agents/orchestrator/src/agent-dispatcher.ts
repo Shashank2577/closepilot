@@ -66,6 +66,11 @@ export class AgentDispatcher {
         timeout: 300000, // 5 minutes
         priority: 'medium',
       },
+      [AgentType.OUTREACH]: {
+        maxRetries: 3,
+        timeout: 300000,
+        priority: 'high',
+      },
       [AgentType.SCOPING]: {
         maxRetries: 3,
         timeout: 600000, // 10 minutes
@@ -75,6 +80,16 @@ export class AgentDispatcher {
         maxRetries: 3,
         timeout: 600000, // 10 minutes
         priority: 'high',
+      },
+      [AgentType.CHASE]: {
+        maxRetries: 3,
+        timeout: 300000,
+        priority: 'medium',
+      },
+      [AgentType.PREP]: {
+        maxRetries: 2,
+        timeout: 300000,
+        priority: 'medium',
       },
       [AgentType.CRM_SYNC]: {
         maxRetries: 3,
@@ -100,9 +115,20 @@ export class AgentDispatcher {
     const stageToAgent: Record<DealStage, AgentType> = {
       [DealStage.INGESTION]: AgentType.INGESTION,
       [DealStage.ENRICHMENT]: AgentType.ENRICHMENT,
+      [DealStage.QUALIFIED]: AgentType.OUTREACH,
+      [DealStage.OUTREACH_SENT]: AgentType.OUTREACH,
+      [DealStage.MEETING_BOOKED]: AgentType.SCOPING,
       [DealStage.SCOPING]: AgentType.SCOPING,
       [DealStage.PROPOSAL]: AgentType.PROPOSAL,
+      [DealStage.PROPOSAL_SENT]: AgentType.CHASE,
+      [DealStage.FOLLOW_UP_1]: AgentType.CHASE,
+      [DealStage.FOLLOW_UP_2]: AgentType.CHASE,
+      [DealStage.NEGOTIATING]: AgentType.CHASE,
+      [DealStage.PROPOSAL_REVISED]: AgentType.PROPOSAL,
       [DealStage.CRM_SYNC]: AgentType.CRM_SYNC,
+      [DealStage.CLOSED_WON]: AgentType.CRM_SYNC,
+      [DealStage.CLOSED_LOST]: AgentType.ORCHESTRATOR,
+      [DealStage.STALLED]: AgentType.CHASE,
       [DealStage.COMPLETED]: AgentType.ORCHESTRATOR,
       [DealStage.FAILED]: AgentType.ORCHESTRATOR,
     };
@@ -237,8 +263,11 @@ export class AgentDispatcher {
     const agentToStage: Record<AgentType, DealStage> = {
       [AgentType.INGESTION]: DealStage.ENRICHMENT,
       [AgentType.ENRICHMENT]: DealStage.SCOPING,
+      [AgentType.OUTREACH]: DealStage.OUTREACH_SENT,
       [AgentType.SCOPING]: DealStage.PROPOSAL,
       [AgentType.PROPOSAL]: DealStage.CRM_SYNC,
+      [AgentType.CHASE]: DealStage.FOLLOW_UP_1,
+      [AgentType.PREP]: DealStage.MEETING_BOOKED,
       [AgentType.CRM_SYNC]: DealStage.COMPLETED,
       [AgentType.ORCHESTRATOR]: DealStage.COMPLETED,
     };

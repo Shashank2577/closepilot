@@ -20,56 +20,67 @@ Most service businesses lose deals not because they can't close, but because the
 
 ## Current Status
 
-> **Phase 1 complete — full build passing across all 11 packages**
+> **Phases 0 & 2 complete. Phase 1 (~40% real). Phases 3–5 not started.**  
+> See [`docs/STATUS.md`](./docs/STATUS.md) for a full spec-vs-built breakdown.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Core type system | ✅ Complete | Full deal lifecycle types |
-| PostgreSQL schema | ✅ Complete | Deals, activities, approvals, projects, documents |
-| MCP server | ✅ Complete | 50+ tools across Deal Store, Gmail, Calendar, Drive |
-| MCP client | ✅ Complete | Agent-side wrappers for all tools |
-| REST API | ✅ Complete | Deals, activities, approvals endpoints |
-| Next.js web UI | ✅ Complete | Dashboard, kanban, approvals, activity stream |
-| OAuth / auth | ✅ Complete | Google OAuth with token refresh |
-| Activity streaming | ✅ Complete | Server-Sent Events real-time feed |
-| Ingestion agent | ✅ Complete | Gmail polling, AI classification, lead extraction |
-| Enrichment agent | ✅ Complete | Company & prospect research via Claude |
-| Scoping agent | ✅ Complete | Requirement extraction, complexity analysis |
-| Proposal agent | ✅ Complete | AI proposal generation with Drive integration |
-| CRM Sync agent | ✅ Complete | HubSpot, Salesforce, Pipedrive adapters |
-| Orchestrator agent | ✅ Complete | Pipeline coordination with approval gates |
-| Docker / deploy | 🔲 Pending | Container setup not yet configured |
-| E2E tests | 🔲 Pending | Integration test suite not yet written |
-| Production dogfood | 🔲 Pending | First real lead not yet run through pipeline |
+| Core type system | ✅ Complete | Full 14-stage lifecycle types, ICP, artifacts |
+| PostgreSQL schema | ✅ Complete | Deals, artifacts, events, approvals, orgs, users |
+| MCP server | ✅ Complete | 50+ tools — Deal Store, Gmail, Calendar, Drive |
+| REST API | ✅ Complete | Deals, activities, approvals, analytics endpoints |
+| Next.js web UI | ✅ Complete | Dashboard, Kanban, approvals, activity feed |
+| Google OAuth + JWT | ✅ Complete | Full auth flow with token refresh |
+| SSE activity stream | ✅ Complete | Real-time deal activity events |
+| Docker + Fly.io deploy | ✅ Complete | Local dev + production deployment configs |
+| OTel + Prometheus | ✅ Complete | Tracing, metrics, request ID propagation |
+| GitHub Actions CI/CD | ✅ Complete | Test + lint + build + deploy pipeline |
+| CRM Sync agent | ✅ Real | HubSpot, Salesforce, Pipedrive adapters working |
+| Ingestion agent | ✅ Real | Gmail polling, Claude classification, lead extraction |
+| Scoping agent | ⚠️ Partial | Real Claude, but several functions are stubs |
+| Enrichment agent | ❌ Fake | Returns hardcoded mock data — not real research |
+| Proposal agent | ❌ Fake | String templates only — no Claude, no Google Docs |
+| Orchestrator worker | ❌ Not started | BullMQ worker defined but never started |
+| Scheduler agent | ❌ Not built | Outreach email + calendar booking — missing entirely |
+| Prep agent | ❌ Not built | Pre-call dossier — missing entirely |
+| Chase agent | ❌ Not built | Follow-up + stall detection — missing entirely |
+| ICP scoring | ❌ Not built | Types defined, no scoring logic |
+| Production dogfood | ❌ Pending | Zero real deals run end-to-end |
 
 ---
 
 ## Architecture
 
+### Complete Vision (6 Agents × 14 Stages)
+
 ```
 Gmail Inbox
     │
     ▼
-┌─────────────────────────────────────────────────────────┐
-│                    Agent Pipeline                        │
-│                                                         │
-│  Ingestion → Enrichment → Scoping → Proposal → CRM Sync │
-│       ↑            ↑          ↑          ↑         ↑    │
-│       └────────────┴──────────┴──────────┴─────────┘    │
-│                   Orchestrator (approvals)               │
-└─────────────────────────────────────────────────────────┘
-    │                           │
-    ▼                           ▼
-MCP Server                  REST API
-(tools)                  (deal data)
-    │                           │
-    └───────────┬───────────────┘
-                ▼
-         PostgreSQL DB
-                │
-                ▼
-        Next.js Web UI
-   (dashboard · approvals · activity)
+┌────────────────────────────────────────────────────────────────────┐
+│                         Agent Pipeline                              │
+│                                                                    │
+│  Scout ──→ Scheduler ──→ Prep ──→ Scribe ──→ Proposal ──→ Chase   │
+│  (email     (book         (call     (scope    (generate   (follow  │
+│   qualify)   meeting)     dossier)  reqs)      doc)        up)     │
+│                                                                    │
+│  Built:  Ingestion ✅  Enrichment ❌  Scoping ⚠️  Proposal ❌       │
+│  Missing: Scheduler ❌  Prep ❌  Chase ❌                           │
+│                                                                    │
+│                    Orchestrator (approvals + BullMQ)               │
+└────────────────────────────────────────────────────────────────────┘
+         │                                    │
+         ▼                                    ▼
+    MCP Server                           REST API
+    (50+ tools)                        (deal data)
+         │                                    │
+         └────────────────┬───────────────────┘
+                          ▼
+                   PostgreSQL + pgvector
+                          │
+                          ▼
+                   Next.js Web UI
+              (dashboard · approvals · activity)
 ```
 
 All agents communicate exclusively through the **MCP server** — they never import from `@closepilot/db` directly. This keeps agents stateless and swappable.
@@ -190,13 +201,23 @@ pnpm db:migrate     # Run migrations
 
 ## What's Next
 
-The immediate next steps to reach a production-ready system:
+See [`docs/STATUS.md`](./docs/STATUS.md) for the full breakdown. Recommended priority:
 
-1. **Docker Compose setup** — containerise all services (api, mcp-server, web, postgres) for one-command startup
-2. **E2E integration tests** — run a synthetic lead end-to-end through the entire agent pipeline
-3. **Agent YAML configs** — Claude Code agent and routine configuration files for managed execution
-4. **Production dogfood** — run the first real lead through the pipeline on a live Gmail account
-5. **Monitoring** — structured logging, error alerting, deal pipeline metrics dashboard
+### P0 — Unblock the Pipeline (Phase 1 completion)
+1. **Start BullMQ worker** — `pnpm --filter orchestrator dev` — currently defined but never started
+2. **Fix Enrichment** — replace hardcoded mock data with real Claude + web search company research
+3. **Fix Proposal** — wire Claude for section generation, Google Docs assembly via Drive MCP tools
+4. **Complete Scoping stubs** — fill in incomplete function bodies, add close_probability scoring
+5. **Set real credentials** — `ANTHROPIC_API_KEY`, `GOOGLE_ACCESS_TOKEN`, `GOOGLE_REFRESH_TOKEN`
+
+### Phase 3 — Intelligence
+6. **pgvector semantic search** — embed past projects, wire similarity search for Proposal pricing
+7. **Analytics** — stage conversion rates, velocity metrics, win rate dashboard
+
+### Phase 4 — Missing Agents
+8. **Scheduler** — outreach email + Google Calendar booking (qualified → meeting-booked)
+9. **Chase** — daily stall detection + follow-up automation (proposal-sent → closed-*)
+10. **Prep** — pre-call dossier delivered 30 min before each meeting
 
 ---
 

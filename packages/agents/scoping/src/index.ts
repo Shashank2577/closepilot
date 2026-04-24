@@ -4,8 +4,7 @@
  * Analyzes email threads for project requirements and defines project scope
  */
 
-import { Anthropic } from '@anthropic-ai/sdk';
-import type { Deal, DealStage, Requirement, ProjectScope } from '@closepilot/core';
+import { createLLMClient, type Deal, type DealStage, type LLMClient, type Requirement } from '@closepilot/core';
 import { DealStoreClient } from '@closepilot/mcp-client';
 import { RequirementExtractor } from './requirement-extractor.js';
 import { ScopeDefiner } from './scope-definer.js';
@@ -13,7 +12,8 @@ import { ComplexityAnalyzer } from './complexity-analyzer.js';
 import { ClarificationGenerator } from './clarification-generator.js';
 
 export interface ScopingAgentConfig {
-  anthropicApiKey: string;
+  anthropicApiKey?: string;
+  apiKey?: string;
   mcpServerUrl?: string;
 }
 
@@ -39,24 +39,24 @@ export interface ScopingResult {
  * 9. Set stage to 'proposal' when complete
  */
 export class ScopingAgent {
-  private anthropic: Anthropic;
+  private llm: LLMClient;
   private mcpClient: DealStoreClient;
   private requirementExtractor: RequirementExtractor;
   private scopeDefiner: ScopeDefiner;
   private complexityAnalyzer: ComplexityAnalyzer;
   private clarificationGenerator: ClarificationGenerator;
 
-  constructor(config: ScopingAgentConfig) {
-    this.anthropic = new Anthropic({
-      apiKey: config.anthropicApiKey,
+  constructor(config: ScopingAgentConfig = {}) {
+    this.llm = createLLMClient({
+      apiKey: config.apiKey || config.anthropicApiKey,
     });
 
     this.mcpClient = new DealStoreClient(config.mcpServerUrl || 'node packages/mcp-server/dist/index.js');
 
-    this.requirementExtractor = new RequirementExtractor(this.anthropic);
-    this.scopeDefiner = new ScopeDefiner(this.anthropic);
+    this.requirementExtractor = new RequirementExtractor(this.llm);
+    this.scopeDefiner = new ScopeDefiner(this.llm);
     this.complexityAnalyzer = new ComplexityAnalyzer();
-    this.clarificationGenerator = new ClarificationGenerator(this.anthropic);
+    this.clarificationGenerator = new ClarificationGenerator(this.llm);
   }
 
   /**
@@ -64,6 +64,8 @@ export class ScopingAgent {
    */
   async processDeal(dealId: string): Promise<ScopingResult> {
     try {
+      await this.mcpClient.connect();
+
       // Step 1: Fetch the deal
       const deal = await this.mcpClient.callTool('get_deal', { dealId });
       if (!deal || !deal.content) {
@@ -171,6 +173,7 @@ export class ScopingAgent {
    * Process all deals in scoping stage
    */
   async processPendingDeals(): Promise<ScopingResult[]> {
+    await this.mcpClient.connect();
     const response = await this.mcpClient.callTool('query_deals_by_stage', {
       stage: 'scoping',
     });

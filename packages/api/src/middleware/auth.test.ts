@@ -6,6 +6,8 @@ import { UserRole } from '@closepilot/core';
 import type { AppContext } from '../types';
 
 describe('Auth Middleware', () => {
+  process.env.JWT_SECRET ||= 'default_secret';
+
   const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'default_secret');
 
   const generateToken = async (payload: any) => {

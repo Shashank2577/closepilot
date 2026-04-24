@@ -44,8 +44,7 @@ webhooksRoutes.post('/gmail', async (c): Promise<Response> => {
     const { emailAddress, historyId } = historyRecord;
     console.log(`[Webhooks] Gmail notification for ${emailAddress}, historyId: ${historyId}`);
 
-    // Create a deal stub and kick off ingestion
-    // The ingestion agent will fetch the actual email content via Gmail API
+    // Create a deal stub and kick off enrichment.
     const deal = await createDeal({
       leadEmail: emailAddress,
       leadName: emailAddress.split('@')[0] ?? emailAddress,
@@ -53,8 +52,8 @@ webhooksRoutes.post('/gmail', async (c): Promise<Response> => {
       threadId: historyId,
     });
 
-    enqueueAgentJob({ type: 'RunIngestion', dealId: String(deal.id) }).catch((err: unknown) =>
-      console.error('[Webhooks] Failed to enqueue ingestion for deal', deal.id, err)
+    enqueueAgentJob({ type: 'RunEnrichment', dealId: String(deal.id) }).catch((err: unknown) =>
+      console.error('[Webhooks] Failed to enqueue enrichment for deal', deal.id, err)
     );
 
     // Acknowledge the Pub/Sub message with 204 (no content)

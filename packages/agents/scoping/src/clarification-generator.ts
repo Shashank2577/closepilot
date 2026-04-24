@@ -4,8 +4,7 @@
  * Generates clarification emails when requirements are incomplete
  */
 
-import { Anthropic } from '@anthropic-ai/sdk';
-import type { Deal } from '@closepilot/core';
+import { createLLMClient, parseJsonFromText, type Deal, type LLMClient } from '@closepilot/core';
 
 export interface ClarificationEmail {
   subject: string;
@@ -16,7 +15,11 @@ export interface ClarificationEmail {
  * Generates clarification emails
  */
 export class ClarificationGenerator {
-  constructor(private anthropic: Anthropic) {}
+  private llm: LLMClient;
+
+  constructor(llm: LLMClient = createLLMClient()) {
+    this.llm = llm;
+  }
 
   /**
    * Generate clarification email based on missing information
@@ -24,23 +27,12 @@ export class ClarificationGenerator {
   async generate(deal: Deal, missingInfo: string[]): Promise<ClarificationEmail> {
     const prompt = this.buildPrompt(deal, missingInfo);
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1500,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
+    const responseText = await this.llm.generateText({
+      prompt,
+      maxTokens: 1500,
+      temperature: 0.3,
     });
-
-    const emailText = response.content[0];
-    if (emailText.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
-    }
-
-    return this.parseEmail(emailText.text);
+    return this.parseEmail(responseText);
   }
 
   /**
@@ -94,12 +86,7 @@ Return ONLY valid JSON, no other text.`;
    */
   private parseEmail(responseText: string): ClarificationEmail {
     try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = parseJsonFromText<any>(responseText);
 
       return {
         subject: parsed.subject || 'Project Clarification Questions',

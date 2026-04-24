@@ -1,47 +1,78 @@
-import { CompanyResearch } from '@closepilot/core';
-import { DataSources } from './data-sources';
+import { createLLMClient, type CompanyResearch, type LLMClient, type LLMConfig } from '@closepilot/core';
+
+interface CompanyResearchJson {
+  companyName?: string;
+  industry?: string;
+  size?: string | number;
+  website?: string;
+  description?: string;
+  recentNews?: string[];
+  fundingInfo?: {
+    stage?: string;
+    amount?: number;
+    date?: string;
+  };
+  technologies?: string[];
+  competitors?: string[];
+}
 
 export class CompanyResearcher {
-  private dataSources: DataSources;
+  private llm: LLMClient;
 
-  constructor(dataSources: DataSources) {
-    this.dataSources = dataSources;
+  constructor(config: LLMConfig = {}) {
+    this.llm = createLLMClient({ ...config, maxTokens: config.maxTokens || 1800 });
   }
 
-  /**
-   * Researches a company using multiple data sources and aggregates the results.
-   */
   async research(companyName: string, domain?: string): Promise<CompanyResearch> {
-    const searchDomain = domain || companyName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+    const prompt = `Research this B2B lead's company using public knowledge and, when available to the provider, web context.
 
-    // Fetch data concurrently from different sources
-    const [linkedInData, crunchbaseData, clearbitData, searchResults] = await Promise.all([
-      this.dataSources.getLinkedInCompany(companyName),
-      this.dataSources.getCrunchbaseData(companyName),
-      this.dataSources.getClearbitData(searchDomain),
-      this.dataSources.searchGoogle(`${companyName} company news updates`)
-    ]);
+Company: ${companyName}
+Domain hint: ${domain || 'unknown'}
 
-    // Map aggregated data to the core CompanyResearch type
-    const research: CompanyResearch = {
-      companyName: linkedInData?.name || companyName,
-      industry: linkedInData?.industry,
-      size: linkedInData?.size,
-      website: linkedInData?.website,
-      description: linkedInData?.description,
-      technologies: clearbitData?.techStack || [],
-      competitors: crunchbaseData?.competitors || [],
-      recentNews: searchResults.map(res => res.title),
+Find:
+- company size or employee range
+- industry
+- website
+- primary product/service and target market
+- recent news, funding, or growth signals
+- likely technology stack signals
+- competitors or adjacent vendors
+
+Return JSON matching:
+{
+  "companyName": "string",
+  "industry": "string",
+  "size": "string",
+  "website": "string",
+  "description": "string",
+  "recentNews": ["string"],
+  "fundingInfo": { "stage": "string", "amount": 0, "date": "YYYY-MM-DD" },
+  "technologies": ["string"],
+  "competitors": ["string"]
+}`;
+
+    const parsed = await this.llm.generateJson<CompanyResearchJson>({
+      prompt,
+      maxTokens: 1800,
+      temperature: 0.2,
+    });
+
+    return {
+      companyName: parsed.companyName || companyName,
+      industry: parsed.industry,
+      size: parsed.size === undefined ? undefined : String(parsed.size),
+      website: parsed.website,
+      description: parsed.description,
+      recentNews: Array.isArray(parsed.recentNews) ? parsed.recentNews : [],
+      fundingInfo: parsed.fundingInfo
+        ? {
+            stage: parsed.fundingInfo.stage,
+            amount: parsed.fundingInfo.amount,
+            date: parsed.fundingInfo.date ? new Date(parsed.fundingInfo.date) : undefined,
+          }
+        : undefined,
+      technologies: Array.isArray(parsed.technologies) ? parsed.technologies : [],
+      competitors: Array.isArray(parsed.competitors) ? parsed.competitors : [],
     };
-
-    if (crunchbaseData) {
-      research.fundingInfo = {
-        stage: crunchbaseData.fundingStage,
-        amount: crunchbaseData.fundingAmount,
-        date: crunchbaseData.lastFundingDate,
-      };
-    }
-
-    return research;
   }
 }

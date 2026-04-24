@@ -288,15 +288,10 @@ export class PerformanceReporter {
     const throughputPerDay = completedDeals.length / daysInPeriod;
 
     // Calculate stage distribution
-    const stageDistribution: Record<DealStage, number> = {
-      [DealStage.INGESTION]: 0,
-      [DealStage.ENRICHMENT]: 0,
-      [DealStage.SCOPING]: 0,
-      [DealStage.PROPOSAL]: 0,
-      [DealStage.CRM_SYNC]: 0,
-      [DealStage.COMPLETED]: 0,
-      [DealStage.FAILED]: 0,
-    };
+    const stageDistribution = Object.values(DealStage).reduce(
+      (distribution, stage) => ({ ...distribution, [stage]: 0 }),
+      {} as Record<DealStage, number>
+    );
 
     periodDeals.forEach(deal => {
       stageDistribution[deal.stage]++;
@@ -403,14 +398,10 @@ export class PerformanceReporter {
     });
 
     const errorsByType: Record<string, number> = {};
-    const errorsByAgent: Record<AgentType, number> = {
-      [AgentType.INGESTION]: 0,
-      [AgentType.ENRICHMENT]: 0,
-      [AgentType.SCOPING]: 0,
-      [AgentType.PROPOSAL]: 0,
-      [AgentType.CRM_SYNC]: 0,
-      [AgentType.ORCHESTRATOR]: 0,
-    };
+    const errorsByAgent = Object.values(AgentType).reduce(
+      (counts, agentType) => ({ ...counts, [agentType]: 0 }),
+      {} as Record<AgentType, number>
+    );
 
     errorEntries.forEach(entry => {
       const errorCode = entry.details.errorCode as string | undefined;

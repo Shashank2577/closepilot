@@ -44,8 +44,11 @@ export interface AgentMetadata {
 export enum AgentType {
   INGESTION = 'ingestion',
   ENRICHMENT = 'enrichment',
+  OUTREACH = 'outreach',
   SCOPING = 'scoping',
   PROPOSAL = 'proposal',
+  CHASE = 'chase',
+  PREP = 'prep',
   CRM_SYNC = 'crm_sync',
   ORCHESTRATOR = 'orchestrator',
 }

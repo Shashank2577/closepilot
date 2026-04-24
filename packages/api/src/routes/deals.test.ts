@@ -28,6 +28,8 @@ import {
   queryDealsByStage
 } from '@closepilot/db';
 
+process.env.JWT_SECRET ||= 'default_secret';
+
 const app = new Hono();
 app.route('/api/deals', dealsRoutes);
 

@@ -10,7 +10,7 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting not configured yet'",
-    "test": "vitest run",
+    "test": "vitest run src __tests__",
     "worker": "node --loader ts-node/esm src/worker.ts"
   },
   "dependencies": {
@@ -20,7 +20,9 @@
     "@closepilot/mcp-client": "workspace:*",
     "@closepilot/agents-ingestion": "workspace:*",
     "@closepilot/agent-enrichment": "workspace:*",
+    "@closepilot/agent-outreach": "workspace:*",
     "@closepilot/agent-scoping": "workspace:*",
+    "@closepilot/agent-chase": "workspace:*",
     "proposal": "workspace:*",
     "@closepilot/agent-crm-sync": "workspace:*",
     "bullmq": "^5.75.2",

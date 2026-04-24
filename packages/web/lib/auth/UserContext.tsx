@@ -16,27 +16,25 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // In a real app, you would fetch the user from an API endpoint here
-    // For now, we simulate a fetched user for development purposes
-    const simulateFetch = async () => {
-      try {
-        // Mock user data for development.  A real implementation would make an API call.
-        const mockUser: AuthUser = {
-          id: 1,
-          email: 'admin@closepilot.com',
-          name: 'Admin User',
-          role: UserRole.ADMIN,
-          orgId: 1
-        };
-        setUser(mockUser);
-      } catch (error) {
-        console.error("Failed to fetch user", error);
-      } finally {
-        setIsLoading(false);
-      }
+    const fallbackUser: AuthUser = {
+      id: 1,
+      email: 'admin@closepilot.com',
+      name: 'Admin User',
+      role: UserRole.ADMIN,
+      orgId: 1,
     };
 
-    simulateFetch();
+    fetch('/api/user')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((info) => {
+        setUser(
+          info
+            ? { id: info.id ?? 1, orgId: info.orgId ?? 1, role: info.role ?? UserRole.ADMIN, email: info.email, name: info.name }
+            : fallbackUser
+        );
+      })
+      .catch(() => setUser(fallbackUser))
+      .finally(() => setIsLoading(false));
   }, []);
 
   return (

@@ -14,7 +14,7 @@ import {
 import { StageVelocity } from '@closepilot/core';
 
 async function fetchVelocity(): Promise<StageVelocity[]> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/analytics/velocity`);
+  const response = await fetch('/api/analytics/velocity');
   if (!response.ok) {
     throw new Error('Failed to fetch velocity data');
   }

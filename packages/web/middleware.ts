@@ -9,6 +9,11 @@ export function middleware(request: NextRequest) {
   const tokenExpiry = request.cookies.get('token_expiry')?.value;
   const path = request.nextUrl.pathname;
 
+  // Skip auth entirely in development
+  if (process.env.NODE_ENV === 'development') {
+    return NextResponse.next();
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = ['/auth/signin', '/auth/callback'];
   const isPublicRoute = publicRoutes.some(route => path.startsWith(route));

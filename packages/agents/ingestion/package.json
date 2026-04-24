@@ -17,7 +17,9 @@
     "@closepilot/core": "workspace:*",
     "@closepilot/mcp-client": "workspace:*",
     "@anthropic-ai/sdk": "^0.30.0",
-    "cron": "^3.1.6"
+    "bullmq": "^5.75.2",
+    "cron": "^3.1.6",
+    "ioredis": "^5.10.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

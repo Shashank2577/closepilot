@@ -1,51 +1,84 @@
-import { ProspectResearch } from '@closepilot/core';
-import { DataSources } from './data-sources';
+import { createLLMClient, type LLMClient, type LLMConfig, type ProspectResearch } from '@closepilot/core';
+
+interface ProspectResearchJson {
+  name?: string;
+  title?: string;
+  linkedin?: string;
+  tenure?: string;
+  background?: string;
+  recentActivity?: string[];
+  decisionMaker?: boolean;
+  influenceLevel?: 'high' | 'medium' | 'low';
+}
 
 export class ProspectResearcher {
-  private dataSources: DataSources;
+  private llm: LLMClient;
 
-  constructor(dataSources: DataSources) {
-    this.dataSources = dataSources;
+  constructor(config: LLMConfig = {}) {
+    this.llm = createLLMClient({ ...config, maxTokens: config.maxTokens || 1200 });
   }
 
-  /**
-   * Evaluates if a given job title belongs to a decision maker.
-   * Simple heuristic based on common executive/director titles.
-   */
-  private isDecisionMaker(title: string): boolean {
-    const lowerTitle = title.toLowerCase();
-    const dmKeywords = ['ceo', 'cto', 'cfo', 'coo', 'vp', 'director', 'head', 'founder', 'chief'];
-    return dmKeywords.some(keyword => lowerTitle.includes(keyword));
-  }
+  async research(
+    name: string,
+    companyName?: string,
+    title?: string,
+    emailContext?: string
+  ): Promise<ProspectResearch> {
+    const prompt = `Infer the prospect profile for this B2B lead.
 
-  /**
-   * Researches a prospect using multiple data sources and aggregates the results.
-   */
-  async research(name: string, companyName?: string): Promise<ProspectResearch> {
-    const linkedInProfile = await this.dataSources.getLinkedInProfile(name, companyName);
+Name: ${name}
+Company: ${companyName || 'unknown'}
+Title: ${title || 'unknown'}
+Email/context:
+${emailContext || 'No additional context provided.'}
 
-    const title = linkedInProfile?.title || 'Unknown Title';
-    const decisionMaker = this.isDecisionMaker(title);
+Infer:
+- decision-making authority
+- influence level
+- seniority and technical depth
+- likely pain points based on role/company
+- concise background summary
 
-    // Calculate influence level
-    let influenceLevel: 'high' | 'medium' | 'low' = 'low';
-    if (decisionMaker) {
-      influenceLevel = 'high';
-    } else if (title.toLowerCase().includes('manager') || title.toLowerCase().includes('lead')) {
-      influenceLevel = 'medium';
-    }
+Return JSON:
+{
+  "name": "string",
+  "title": "string",
+  "linkedin": "best-effort LinkedIn search URL",
+  "tenure": "string",
+  "background": "string",
+  "recentActivity": ["string"],
+  "decisionMaker": true,
+  "influenceLevel": "high|medium|low"
+}`;
 
-    const research: ProspectResearch = {
-      name: linkedInProfile?.name || name,
-      title: title,
-      LinkedIn: `https://linkedin.com/in/${name.toLowerCase().replace(/\s+/g, '-')}`,
-      tenure: linkedInProfile?.tenure,
-      background: linkedInProfile?.background,
-      recentActivity: linkedInProfile?.recentActivity || [],
-      decisionMaker,
-      influenceLevel,
+    const parsed = await this.llm.generateJson<ProspectResearchJson>({
+      prompt,
+      maxTokens: 1200,
+      temperature: 0.2,
+    });
+
+    return {
+      name: parsed.name || name,
+      title: parsed.title || title || 'Unknown Title',
+      LinkedIn: parsed.linkedin || `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
+        `${name} ${companyName || ''}`.trim()
+      )}`,
+      tenure: parsed.tenure,
+      background: parsed.background,
+      recentActivity: Array.isArray(parsed.recentActivity) ? parsed.recentActivity : [],
+      decisionMaker: Boolean(parsed.decisionMaker),
+      influenceLevel: parsed.influenceLevel || inferInfluenceLevel(parsed.title || title || ''),
     };
-
-    return research;
   }
+}
+
+function inferInfluenceLevel(title: string): 'high' | 'medium' | 'low' {
+  const normalized = title.toLowerCase();
+  if (/\b(ceo|cto|cfo|coo|chief|founder|partner|president|vp|vice president)\b/.test(normalized)) {
+    return 'high';
+  }
+  if (/\b(director|head|manager|lead)\b/.test(normalized)) {
+    return 'medium';
+  }
+  return 'low';
 }

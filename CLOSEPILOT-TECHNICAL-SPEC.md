@@ -1,8 +1,11 @@
 # CLOSEPILOT — Technical Architecture & Jules Operations Manual
 
-> **Version:** 1.0 | **Date:** 2026-04-15
-> **Purpose:** This document is the single source of truth for engineering. It contains every technical decision, every file path, every interface, every Jules session configuration, and every integration detail needed to build Closepilot from zero to deployed product.
+> **Version:** 1.1 | **Original:** 2026-04-15 | **Status updated:** 2026-04-22  
+> **Purpose:** This document is the single source of truth for engineering. It contains every technical decision, every file path, every interface, every Jules session configuration, and every integration detail needed to build Closepilot from zero to deployed product.  
 > **Audience:** Claude Code sessions, Jules agent tasks, and the human orchestrator.
+
+> **⚠️ Implementation Status:** See [`docs/STATUS.md`](./docs/STATUS.md) for a complete spec-vs-built breakdown.  
+> **Summary:** Phase 0 (foundation) and Phase 2 (infra) are complete. Phase 1 (core agents) is ~40% real — Enrichment returns mock data, Proposal uses string templates, Scheduler/Prep/Chase are not built, and the BullMQ worker has never been started. The 6-agent + 14-stage vision described in this spec is the complete target; current build covers approximately the first half.
 
 ---
 

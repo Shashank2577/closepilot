@@ -4,9 +4,20 @@
 export enum DealStage {
   INGESTION = 'ingestion',
   ENRICHMENT = 'enrichment',
+  QUALIFIED = 'qualified',
+  OUTREACH_SENT = 'outreach-sent',
+  MEETING_BOOKED = 'meeting-booked',
   SCOPING = 'scoping',
   PROPOSAL = 'proposal',
+  PROPOSAL_SENT = 'proposal-sent',
+  FOLLOW_UP_1 = 'follow-up-1',
+  FOLLOW_UP_2 = 'follow-up-2',
+  NEGOTIATING = 'negotiating',
+  PROPOSAL_REVISED = 'proposal-revised',
   CRM_SYNC = 'crm_sync',
+  CLOSED_WON = 'closed-won',
+  CLOSED_LOST = 'closed-lost',
+  STALLED = 'stalled',
   COMPLETED = 'completed',
   FAILED = 'failed',
 }
@@ -41,10 +52,22 @@ export interface Deal {
   // Proposal data
   proposal?: Proposal;
   proposalDocumentId?: string;
+  proposalSentAt?: Date;
 
   // CRM sync
   crmId?: string;
   crmSyncedAt?: Date;
+
+  // Outreach / meeting lifecycle
+  outreachSentAt?: Date;
+  meetingBookedAt?: Date;
+  meetingDatetime?: Date;
+  calendarEventId?: string;
+
+  // Chase lifecycle
+  followUpCount?: number;
+  lastFollowUpAt?: Date;
+  lastActivityAt?: Date;
 
   // Metadata
   source: 'gmail' | 'manual' | 'other';

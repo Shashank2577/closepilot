@@ -14,9 +14,20 @@ interface DealCardProps {
 const stageColors: Record<DealStage, 'success' | 'warning' | 'danger' | 'info'> = {
   [DealStage.INGESTION]: 'info',
   [DealStage.ENRICHMENT]: 'info',
+  [DealStage.QUALIFIED]: 'info',
+  [DealStage.OUTREACH_SENT]: 'info',
+  [DealStage.MEETING_BOOKED]: 'info',
   [DealStage.SCOPING]: 'warning',
   [DealStage.PROPOSAL]: 'warning',
+  [DealStage.PROPOSAL_SENT]: 'warning',
+  [DealStage.FOLLOW_UP_1]: 'warning',
+  [DealStage.FOLLOW_UP_2]: 'warning',
+  [DealStage.NEGOTIATING]: 'warning',
+  [DealStage.PROPOSAL_REVISED]: 'warning',
   [DealStage.CRM_SYNC]: 'success',
+  [DealStage.CLOSED_WON]: 'success',
+  [DealStage.CLOSED_LOST]: 'danger',
+  [DealStage.STALLED]: 'danger',
   [DealStage.COMPLETED]: 'success',
   [DealStage.FAILED]: 'danger',
 };
@@ -51,7 +62,7 @@ export function DealCard({ deal, onClick }: DealCardProps) {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className="bg-white border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+      className="bg-surface-raised border border-border rounded-xl p-4 cursor-pointer hover:shadow-md hover:border-border-hover transition-all duration-200"
     >
       <div className="flex justify-between items-start mb-2">
         <h3 className="font-semibold text-gray-900 truncate flex-1">

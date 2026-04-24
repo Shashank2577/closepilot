@@ -1,4 +1,4 @@
-import { Deal, ProjectScope } from '@closepilot/core';
+import { createLLMClient, type Deal, type LLMClient, type ProjectScope } from '@closepilot/core';
 
 export interface GeneratedContent {
   executiveSummary: string;
@@ -6,47 +6,99 @@ export interface GeneratedContent {
   timeline: string;
   terms: string[];
   nextSteps: string[];
+  coverEmail: string;
 }
 
-export function generateContent(deal: Deal, scope: ProjectScope): GeneratedContent {
-  const companyName = deal.leadCompany || 'your company';
+interface GeneratedContentJson {
+  executiveSummary?: string;
+  scope?: string;
+  timeline?: string;
+  terms?: string[];
+  nextSteps?: string[];
+  coverEmail?: string;
+}
 
-  const executiveSummary = `We are excited to propose a partnership with ${companyName} for the "${scope.title}" project.
-This proposal outlines our approach to delivering a high-quality solution tailored to your specific needs.
-${scope.description} We are confident that our expertise in ${scope.services.join(', ')} makes us the ideal partner for this engagement.`;
-
-  const scopeText = `The scope of work for this project includes the following key deliverables:
-${scope.deliverables.map(d => `- ${d}`).join('\n')}
-
-Assumptions:
-${scope.assumptions.map(a => `- ${a}`).join('\n')}
-
-Risks to be managed:
-${scope.risks.map(r => `- ${r}`).join('\n')}`;
-
-  const timelineText = scope.timeline
-    ? `The estimated timeline for this project is ${scope.timeline}. A detailed project schedule will be provided upon project kickoff.`
-    : `The project timeline will be established during the initial kickoff phase, depending on final requirements.`;
-
-  const terms = [
-    'This proposal is valid for 30 days from the date of issue.',
-    'Payment terms are Net 30 from the date of invoice.',
-    'All intellectual property rights for the deliverables will transfer to the client upon full payment.',
-    'Any changes to the scope of work may result in adjustments to the timeline and pricing.'
-  ];
-
-  const nextSteps = [
-    'Review the proposal and pricing details.',
-    'Sign the proposal to indicate acceptance.',
-    'Schedule a project kickoff meeting.',
-    'Provide initial payment as outlined in the payment schedule.'
-  ];
+export async function generateContent(deal: Deal, scope: ProjectScope): Promise<GeneratedContent> {
+  const llm = createLLMClient({ maxTokens: 2200 });
+  const parsed = await generateProposalJson(llm, deal, scope);
 
   return {
-    executiveSummary,
-    scope: scopeText,
-    timeline: timelineText,
-    terms,
-    nextSteps
+    executiveSummary: parsed.executiveSummary || fallbackExecutiveSummary(deal, scope),
+    scope: parsed.scope || fallbackScope(scope),
+    timeline: parsed.timeline || fallbackTimeline(scope),
+    terms: Array.isArray(parsed.terms) && parsed.terms.length > 0 ? parsed.terms : fallbackTerms(),
+    nextSteps: Array.isArray(parsed.nextSteps) && parsed.nextSteps.length > 0 ? parsed.nextSteps : fallbackNextSteps(),
+    coverEmail: parsed.coverEmail || fallbackCoverEmail(deal),
   };
+}
+
+async function generateProposalJson(
+  llm: LLMClient,
+  deal: Deal,
+  scope: ProjectScope
+): Promise<GeneratedContentJson> {
+  const prompt = `Generate proposal content for this B2B services opportunity.
+
+Lead:
+- Name: ${deal.leadName}
+- Email: ${deal.leadEmail}
+- Company: ${deal.leadCompany || 'unknown'}
+- Title: ${deal.leadTitle || 'unknown'}
+
+Project scope:
+${JSON.stringify(scope, null, 2)}
+
+Requirements:
+${JSON.stringify(deal.requirements || [], null, 2)}
+
+Write specific, non-boilerplate proposal content. Use concrete language from the requirements. Avoid unsupported claims.
+
+Return JSON:
+{
+  "executiveSummary": "2 concise paragraphs",
+  "scope": "scope of work with concrete deliverables",
+  "timeline": "timeline and phase narrative",
+  "terms": ["term"],
+  "nextSteps": ["next step"],
+  "coverEmail": "short email introducing the proposal"
+}`;
+
+  return llm.generateJson<GeneratedContentJson>({
+    prompt,
+    maxTokens: 2200,
+    temperature: 0.3,
+  });
+}
+
+function fallbackExecutiveSummary(deal: Deal, scope: ProjectScope): string {
+  const companyName = deal.leadCompany || 'your company';
+  return `This proposal outlines a focused engagement for ${companyName} to deliver ${scope.title}. ${scope.description}`;
+}
+
+function fallbackScope(scope: ProjectScope): string {
+  return `Deliverables:\n${scope.deliverables.map((item) => `- ${item}`).join('\n')}\n\nAssumptions:\n${scope.assumptions
+    .map((item) => `- ${item}`)
+    .join('\n')}\n\nRisks:\n${scope.risks.map((item) => `- ${item}`).join('\n')}`;
+}
+
+function fallbackTimeline(scope: ProjectScope): string {
+  return scope.timeline
+    ? `The estimated timeline is ${scope.timeline}, subject to final scope confirmation and stakeholder feedback cycles.`
+    : 'The final timeline will be confirmed during kickoff after requirements and dependencies are validated.';
+}
+
+function fallbackTerms(): string[] {
+  return [
+    'Proposal is valid for 30 days.',
+    'Scope changes may affect timeline and pricing.',
+    'Payment schedule will be finalized in the statement of work.',
+  ];
+}
+
+function fallbackNextSteps(): string[] {
+  return ['Review proposal', 'Confirm scope and timeline', 'Approve statement of work', 'Schedule kickoff'];
+}
+
+function fallbackCoverEmail(deal: Deal): string {
+  return `Hi ${deal.leadName},\n\nAttached is the proposal based on our current understanding of your requirements. Please review it and share any feedback or questions.\n\nBest regards`;
 }

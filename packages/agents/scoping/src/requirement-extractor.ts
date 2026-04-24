@@ -4,8 +4,7 @@
  * Extracts and categorizes requirements from email content using Claude
  */
 
-import { Anthropic } from '@anthropic-ai/sdk';
-import type { Requirement } from '@closepilot/core';
+import { createLLMClient, parseJsonFromText, type LLMClient, type Requirement } from '@closepilot/core';
 
 export interface ExtractionResult {
   requirements: Requirement[];
@@ -16,7 +15,11 @@ export interface ExtractionResult {
  * Extracts requirements from email text
  */
 export class RequirementExtractor {
-  constructor(private anthropic: Anthropic) {}
+  private llm: LLMClient;
+
+  constructor(llm: LLMClient = createLLMClient()) {
+    this.llm = llm;
+  }
 
   /**
    * Extract requirements from email content
@@ -24,23 +27,12 @@ export class RequirementExtractor {
   async extract(emailContent: string): Promise<Requirement[]> {
     const prompt = this.buildPrompt(emailContent);
 
-    const response = await this.anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 2000,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
+    const responseText = await this.llm.generateText({
+      prompt,
+      maxTokens: 2000,
+      temperature: 0.1,
     });
-
-    const extractedText = response.content[0];
-    if (extractedText.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
-    }
-
-    return this.parseRequirements(extractedText.text);
+    return this.parseRequirements(responseText);
   }
 
   /**
@@ -85,13 +77,7 @@ Return ONLY valid JSON, no other text.`;
    */
   private parseRequirements(responseText: string): Requirement[] {
     try {
-      // Extract JSON from response
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = parseJsonFromText<any>(responseText);
 
       if (!parsed.requirements || !Array.isArray(parsed.requirements)) {
         throw new Error('Invalid requirements format');

@@ -1,35 +1,62 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Deal, DealStage } from '@closepilot/core';
 import { KanbanBoard } from '../components/kanban/KanbanBoard';
 import { DealStats } from '../components/deals/DealStats';
+import { CreateDealModal } from '../components/deals/CreateDealModal';
 import VelocityChart from '../components/dashboard/VelocityChart';
+import { ActivityFeed } from '../components/activity/ActivityFeed';
 import { FilterBar } from '../components/filters/FilterBar';
 import { SearchBar } from '../components/filters/SearchBar';
-import { fetchDeals } from '../lib/api';
+import { Button } from '../components/ui/button';
+import { fetchDeals, searchDeals } from '../lib/api';
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } },
+};
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.1 } },
+};
 
 export default function HomePage() {
   const [selectedStage, setSelectedStage] = useState<DealStage | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const { data: deals = [], isLoading, error, refetch } = useQuery<Deal[]>({
     queryKey: ['deals'],
     queryFn: () => fetchDeals(),
-    refetchInterval: 30000, // Poll every 30 seconds (will be replaced with SSE)
+    refetchInterval: 30000,
+  });
+
+  const { data: searchResults } = useQuery<Deal[]>({
+    queryKey: ['deals-search', searchQuery],
+    queryFn: () => searchDeals(searchQuery),
+    enabled: searchQuery.length >= 3,
   });
 
   const filteredDeals = React.useMemo(() => {
+    if (searchQuery.length >= 3 && searchResults) {
+      let filtered = searchResults;
+      if (selectedStage !== 'all') {
+        filtered = filtered.filter((d) => d.stage === selectedStage);
+      }
+      return filtered;
+    }
+
     let filtered = deals;
 
-    // Filter by stage
     if (selectedStage !== 'all') {
       filtered = filtered.filter((d) => d.stage === selectedStage);
     }
 
-    // Filter by search query
-    if (searchQuery) {
+    if (searchQuery && searchQuery.length < 3) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (d) =>
@@ -40,14 +67,14 @@ export default function HomePage() {
     }
 
     return filtered;
-  }, [deals, selectedStage, searchQuery]);
+  }, [deals, searchResults, selectedStage, searchQuery]);
 
   if (isLoading) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="text-center py-12">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-          <p className="mt-4 text-gray-600">Loading deals...</p>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent" />
+          <p className="mt-4 text-text-secondary">Loading deals...</p>
         </div>
       </div>
     );
@@ -56,7 +83,7 @@ export default function HomePage() {
   if (error) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
           <h2 className="text-lg font-semibold text-red-900 mb-2">Error</h2>
           <p className="text-red-700">
             Failed to load deals. Please try again later.
@@ -67,28 +94,52 @@ export default function HomePage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <motion.div
+      className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
+      variants={stagger}
+      initial="hidden"
+      animate="show"
+    >
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Deal Pipeline Dashboard</h1>
-        <p className="mt-2 text-gray-600">
-          Manage and track your B2B deals through the sales pipeline
-        </p>
-      </div>
+      <motion.div variants={fadeInUp} className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-text-primary tracking-tight">
+            Deal Pipeline
+          </h1>
+          <p className="mt-1 text-text-secondary">
+            Manage and track your B2B deals through the sales pipeline
+          </p>
+        </div>
+        <Button onClick={() => setShowCreateModal(true)} size="md">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          New Deal
+        </Button>
+      </motion.div>
 
       {/* Statistics */}
-      <div className="mb-8">
+      <motion.div variants={fadeInUp} className="mb-8">
         <DealStats deals={deals} />
-      </div>
+      </motion.div>
 
       {/* Pipeline Velocity */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Pipeline Velocity</h2>
-        <VelocityChart />
-      </section>
+      <motion.section variants={fadeInUp} className="mb-8">
+        <h2 className="text-xl font-bold text-text-primary tracking-tight mb-4">Pipeline Velocity</h2>
+        <div className="bg-surface-raised rounded-xl border border-border p-6">
+          <VelocityChart />
+        </div>
+      </motion.section>
+
+      {/* Live Activity */}
+      <motion.section variants={fadeInUp} className="mb-8">
+        <div className="bg-surface-raised rounded-xl border border-border p-6">
+          <ActivityFeed limit={20} />
+        </div>
+      </motion.section>
 
       {/* Filters and Search */}
-      <div className="mb-6 space-y-4">
+      <motion.div variants={fadeInUp} className="mb-6 space-y-4">
         <FilterBar
           selectedStage={selectedStage}
           onStageChange={setSelectedStage}
@@ -97,14 +148,14 @@ export default function HomePage() {
           onSearch={setSearchQuery}
           placeholder="Search by name, company, or email..."
         />
-      </div>
+      </motion.div>
 
       {/* Kanban Board */}
-      <div>
+      <motion.div variants={fadeInUp}>
         {filteredDeals.length === 0 ? (
-          <div className="bg-white border rounded-lg p-12 text-center">
+          <div className="bg-surface-raised border border-border rounded-xl p-12 text-center">
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className="mx-auto h-12 w-12 text-text-tertiary"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -112,12 +163,12 @@ export default function HomePage() {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
+                strokeWidth={1.5}
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No deals</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <h3 className="mt-3 text-sm font-semibold text-text-primary">No deals</h3>
+            <p className="mt-1 text-sm text-text-secondary">
               {selectedStage !== 'all'
                 ? `No deals in ${selectedStage.replace('_', ' ')} stage`
                 : searchQuery
@@ -128,7 +179,19 @@ export default function HomePage() {
         ) : (
           <KanbanBoard deals={filteredDeals} onDealUpdate={() => refetch()} />
         )}
-      </div>
-    </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {showCreateModal && (
+          <CreateDealModal
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={() => {
+              setShowCreateModal(false);
+              refetch();
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

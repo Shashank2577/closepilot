@@ -1,10 +1,14 @@
 import { AgentInput, AgentOutput, Deal, ProposalContext, Proposal, DealStage } from '@closepilot/core';
+import { findSimilarProjects } from '@closepilot/db';
+import { DealStoreClient, DriveTools } from '@closepilot/mcp-client';
 import { matchCaseStudies } from './case-study-matcher';
 import { calculatePricing, PricingStrategyType } from './pricing-strategy';
 import { selectTemplate } from './template-selector';
 import { generateContent } from './content-generator';
 
 export class ProposalAgent {
+  constructor(private mcpServerCommand?: string) {}
+
   async process(input: AgentInput<ProposalContext>): Promise<AgentOutput<Deal>> {
     const { deal, context } = input;
     const startMs = Date.now();
@@ -29,10 +33,26 @@ export class ProposalAgent {
 
       // 2. Calculate Pricing
       const pricingStrategy = (context.pricingStrategy as PricingStrategyType) || 'standard';
-      const pricing = calculatePricing(services, complexity, pricingStrategy);
+      const similarProjects = await findSimilarProjects(
+        deal.leadCompany,
+        services[0],
+        [scope.title, ...services, ...(deal.requirements || []).map((requirement) => requirement.description)],
+        5
+      ).catch(() => []);
+      const pricing = calculatePricing({
+        services,
+        requirements: deal.requirements || [],
+        complexity,
+        strategy: pricingStrategy,
+        historicalProjects: similarProjects.map((project: { id: number; name: string; budget: string | null }) => ({
+          id: project.id,
+          name: project.name,
+          budget: project.budget,
+        })),
+      });
 
       // 3. Generate Content
-      const content = generateContent(deal, scope);
+      const content = await generateContent(deal, scope);
 
       // 4. Match Case Studies (Simulated appending to scope or using as metadata)
       const caseStudies = context.includeCaseStudies ? matchCaseStudies(services, complexity) : [];
@@ -48,23 +68,17 @@ export class ProposalAgent {
         nextSteps: content.nextSteps,
       };
 
-      // Mock Drive Document Generation
-      // In a real implementation, we would call a Drive service/tool here
-      // const docRequest: DocumentGenerationRequest = {
-      //   templateId,
-      //   dealId: deal.id,
-      //   values: { ...proposal, caseStudies },
-      //   outputFormat: 'pdf'
-      // };
-      // const docResult = await mockDriveService.generateDocument(docRequest);
-
-      const mockDocumentId = `doc_${deal.id}_${Date.now()}`;
+      const documentResult = await this.generateProposalDocument(deal, templateId, {
+        ...proposal,
+        caseStudies,
+        coverEmail: content.coverEmail,
+      });
 
       // Update Deal
       const updatedDeal: Deal = {
         ...deal,
         proposal,
-        proposalDocumentId: mockDocumentId,
+        proposalDocumentId: documentResult?.documentId,
         updatedAt: new Date()
       };
 
@@ -77,7 +91,11 @@ export class ProposalAgent {
         data: updatedDeal,
         nextStage: requiresApproval ? undefined : DealStage.CRM_SYNC,
         requiresApproval,
-        approvalReason: requiresApproval ? `Total pricing ($${pricing.total}) exceeds $50,000 threshold.` : undefined,
+        approvalReason: requiresApproval
+          ? `Total pricing ($${pricing.total}) exceeds $50,000 threshold.`
+          : documentResult
+            ? undefined
+            : 'Proposal content generated, but no Google Drive document was created because no proposal template is configured.',
         durationMs: Date.now() - startMs,
       };
 
@@ -89,6 +107,37 @@ export class ProposalAgent {
         requiresApproval: false,
         durationMs: Date.now() - startMs,
       };
+    }
+  }
+
+  private async generateProposalDocument(
+    deal: Deal,
+    templateId: string,
+    values: Record<string, unknown>
+  ): Promise<{ documentId: string; driveUrl?: string } | null> {
+    const effectiveTemplateId = process.env.PROPOSAL_TEMPLATE_ID || templateId;
+    if (!effectiveTemplateId) return null;
+
+    const client = new DealStoreClient(this.mcpServerCommand || process.env.MCP_SERVER_COMMAND);
+    await client.connect();
+    try {
+      const driveTools = new DriveTools(client);
+      const result = await driveTools.generateDocument({
+        templateId: effectiveTemplateId,
+        dealId: deal.id,
+        values,
+        outputFormat: 'doc',
+        createInFolder: process.env.PROPOSALS_FOLDER_ID,
+      });
+      if (result.status === 'failed') {
+        throw new Error(result.errors?.join('; ') || 'Drive document generation failed');
+      }
+      return {
+        documentId: result.documentId,
+        driveUrl: result.driveUrl,
+      };
+    } finally {
+      await client.disconnect();
     }
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Deal, DealStage } from '@closepilot/core';
 import {
   DndContext,
@@ -24,10 +25,22 @@ interface KanbanBoardProps {
 const STAGES: DealStage[] = [
   DealStage.INGESTION,
   DealStage.ENRICHMENT,
+  DealStage.QUALIFIED,
+  DealStage.OUTREACH_SENT,
+  DealStage.MEETING_BOOKED,
   DealStage.SCOPING,
   DealStage.PROPOSAL,
+  DealStage.PROPOSAL_SENT,
+  DealStage.FOLLOW_UP_1,
+  DealStage.FOLLOW_UP_2,
+  DealStage.NEGOTIATING,
+  DealStage.PROPOSAL_REVISED,
   DealStage.CRM_SYNC,
+  DealStage.CLOSED_WON,
+  DealStage.CLOSED_LOST,
+  DealStage.STALLED,
   DealStage.COMPLETED,
+  DealStage.FAILED,
 ];
 
 export function KanbanBoard({ deals, onDealUpdate }: KanbanBoardProps) {
@@ -43,15 +56,10 @@ export function KanbanBoard({ deals, onDealUpdate }: KanbanBoardProps) {
   );
 
   const dealsByStage = React.useMemo(() => {
-    const grouped: Record<DealStage, Deal[]> = {
-      [DealStage.INGESTION]: [],
-      [DealStage.ENRICHMENT]: [],
-      [DealStage.SCOPING]: [],
-      [DealStage.PROPOSAL]: [],
-      [DealStage.CRM_SYNC]: [],
-      [DealStage.COMPLETED]: [],
-      [DealStage.FAILED]: [],
-    };
+    const grouped = Object.values(DealStage).reduce(
+      (acc, stage) => ({ ...acc, [stage]: [] }),
+      {} as Record<DealStage, Deal[]>
+    );
 
     deals.forEach((deal) => {
       if (grouped[deal.stage]) {
@@ -95,16 +103,28 @@ export function KanbanBoard({ deals, onDealUpdate }: KanbanBoardProps) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <motion.div
+          className="flex gap-4 overflow-x-auto pb-4"
+          initial="hidden"
+          animate="show"
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}
+        >
           {STAGES.map((stage) => (
-            <KanbanColumn
+            <motion.div
               key={stage}
-              stage={stage}
-              deals={dealsByStage[stage]}
-              onDealClick={setSelectedDeal}
-            />
+              variants={{
+                hidden: { opacity: 0, y: 12 },
+                show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } },
+              }}
+            >
+              <KanbanColumn
+                stage={stage}
+                deals={dealsByStage[stage]}
+                onDealClick={setSelectedDeal}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         <DragOverlay>
           {activeDeal ? (
@@ -113,9 +133,16 @@ export function KanbanBoard({ deals, onDealUpdate }: KanbanBoardProps) {
         </DragOverlay>
       </DndContext>
 
-      {selectedDeal && (
-        <DealModal deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
-      )}
+      <AnimatePresence>
+        {selectedDeal && (
+          <DealModal
+            deal={selectedDeal}
+            onClose={() => setSelectedDeal(null)}
+            onDealDeleted={() => { setSelectedDeal(null); onDealUpdate?.(); }}
+            onDealUpdated={() => { setSelectedDeal(null); onDealUpdate?.(); }}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

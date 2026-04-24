@@ -1,4 +1,6 @@
 import { CronJob } from 'cron';
+import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
 import type { EmailMessage } from '@closepilot/core';
 import { GmailTools, DealStoreTools } from '@closepilot/mcp-client';
 import { DealStage } from '@closepilot/core';
@@ -9,7 +11,8 @@ import { LeadExtractor } from './lead-extractor';
  * Configuration for the ingestion monitor
  */
 export interface MonitorConfig {
-  anthropicApiKey: string;
+  anthropicApiKey?: string;
+  apiKey?: string;
   pollIntervalMinutes?: number; // Default: 5 minutes
   gmailQuery?: string; // Gmail search query to filter emails
   processUnreadOnly?: boolean; // Default: true
@@ -36,8 +39,10 @@ export class GmailMonitor {
   private extractor: LeadExtractor;
   private gmailTools: GmailTools;
   private dealStoreTools: DealStoreTools;
+  private agentQueue: Queue;
   private cronJob: CronJob | null = null;
   private isRunning = false;
+  private isProcessing = false;
   private stats: ProcessingStats = {
     emailsProcessed: 0,
     leadsFound: 0,
@@ -54,10 +59,14 @@ export class GmailMonitor {
     dealStoreTools: DealStoreTools,
     config: MonitorConfig
   ) {
-    this.classifier = new EmailClassifier({ anthropicApiKey: config.anthropicApiKey });
+    this.classifier = new EmailClassifier({
+      anthropicApiKey: config.anthropicApiKey,
+      apiKey: config.apiKey,
+    });
     this.extractor = new LeadExtractor(this.classifier);
     this.gmailTools = gmailTools;
     this.dealStoreTools = dealStoreTools;
+    this.agentQueue = createAgentQueue();
   }
 
   /**
@@ -109,12 +118,12 @@ export class GmailMonitor {
    * Process new emails from Gmail
    */
   private async processNewEmails(): Promise<void> {
-    if (this.isRunning) {
+    if (this.isProcessing) {
       console.log('Already processing emails, skipping this cycle');
       return;
     }
 
-    this.isRunning = true;
+    this.isProcessing = true;
     const startTime = Date.now();
 
     try {
@@ -141,7 +150,7 @@ export class GmailMonitor {
       console.error('Error processing emails:', error);
       this.stats.errors++;
     } finally {
-      this.isRunning = false;
+      this.isProcessing = false;
     }
   }
 
@@ -213,6 +222,16 @@ export class GmailMonitor {
         'Lead inquiry processed by Ingestion Agent'
       );
 
+      await this.agentQueue.add(
+        'RunEnrichment',
+        {
+          type: 'RunEnrichment',
+          dealId: deal.id,
+          payload: { orgId: (deal as any).orgId, source: 'ingestion' },
+        },
+        { attempts: 3, backoff: { type: 'exponential', delay: 2000 } }
+      );
+
       // Extract and store initial context
       const context = await this.classifier.extractInitialContext(email);
 
@@ -220,7 +239,7 @@ export class GmailMonitor {
       console.log(`[INGESTION] Lead inquiry received from ${lead.name} (${lead.email}). Company: ${lead.company || 'N/A'}. Urgency: ${lead.urgency}. Requirements: ${lead.requirements?.join(', ') || 'None specified'}`);
 
       this.stats.dealsCreated++;
-      console.log(`Successfully created deal ${deal.id} for lead ${lead.name}`);
+      console.log(`Successfully created deal ${deal.id} for lead ${lead.name} and queued enrichment`);
     } catch (error) {
       console.error(`Error processing email ${email.id}:`, error);
       this.stats.errors++;
@@ -284,4 +303,13 @@ export function createGmailMonitor(
   config: MonitorConfig
 ): GmailMonitor {
   return new GmailMonitor(gmailTools, dealStoreTools, config);
+}
+
+function createAgentQueue(): Queue {
+  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const connection = new IORedis(redisUrl, {
+    maxRetriesPerRequest: null,
+    ...(redisUrl.startsWith('rediss://') ? { tls: {} } : {}),
+  });
+  return new Queue('agent-tasks', { connection });
 }

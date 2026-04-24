@@ -30,10 +30,22 @@ export const deals = pgTable('deals', {
   // Proposal data
   proposal: text('proposal'),
   proposalDocumentId: varchar('proposal_document_id', { length: 255 }),
+  proposalSentAt: timestamp('proposal_sent_at'),
 
   // CRM sync
   crmId: varchar('crm_id', { length: 255 }),
   crmSyncedAt: timestamp('crm_synced_at'),
+
+  // Outreach / meeting lifecycle
+  outreachSentAt: timestamp('outreach_sent_at'),
+  meetingBookedAt: timestamp('meeting_booked_at'),
+  meetingDatetime: timestamp('meeting_datetime'),
+  calendarEventId: varchar('calendar_event_id', { length: 255 }),
+
+  // Chase lifecycle
+  followUpCount: integer('follow_up_count').notNull().default(0),
+  lastFollowUpAt: timestamp('last_follow_up_at'),
+  lastActivityAt: timestamp('last_activity_at'),
 
   // Metadata
   source: varchar('source', { length: 50 }).notNull(),

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -12,17 +12,32 @@ export function SearchBar({
   placeholder = 'Search deals...',
 }: SearchBarProps) {
   const [query, setQuery] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     onSearch(query);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
     if (value === '') {
       onSearch('');
+    } else {
+      debounceRef.current = setTimeout(() => {
+        onSearch(value);
+      }, 300);
     }
   };
 

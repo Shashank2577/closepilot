@@ -53,14 +53,14 @@ export function ApprovalList() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading approvals...</div>
+        <div className="text-text-secondary">Loading approvals...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
         <p className="text-red-800">{error}</p>
         <Button onClick={fetchApprovals} variant="secondary" className="mt-2">
           Retry
@@ -72,7 +72,7 @@ export function ApprovalList() {
   if (approvals.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">No items pending approval.</p>
+        <p className="text-text-secondary">No items pending approval.</p>
       </div>
     );
   }
@@ -80,48 +80,48 @@ export function ApprovalList() {
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-border">
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Deal
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Requested
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-border">
             {approvals.map((approval) => (
-              <tr key={approval.id} className="hover:bg-gray-50">
+              <tr key={approval.id} className="hover:bg-surface transition-colors duration-150">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-text-primary">
                     {approval.deal?.leadCompany || approval.deal?.leadName}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-text-secondary">
                     {approval.deal?.leadEmail}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900 capitalize">
+                  <div className="text-sm text-text-primary capitalize">
                     {approval.itemType}
                   </div>
                   {approval.requestComment && (
-                    <div className="text-sm text-gray-500 truncate max-w-xs">
+                    <div className="text-sm text-text-secondary truncate max-w-xs">
                       {approval.requestComment}
                     </div>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">
                   {new Date(approval.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

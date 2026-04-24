@@ -45,17 +45,15 @@ import { secrets } from '@closepilot/core';
  * @returns The monitor instance for control (stop/start/getStats)
  */
 export async function startIngestionAgent(config: {
-  anthropicApiKey: string;
+  anthropicApiKey?: string;
+  apiKey?: string;
   pollIntervalMinutes?: number;
   gmailQuery?: string;
   processUnreadOnly?: boolean;
   maxEmailsPerBatch?: number;
   mcpServerCommand?: string;
 }): Promise<GmailMonitor> {
-  // Validate required environment
-  if (!config.anthropicApiKey) {
-    throw new Error('ANTHROPIC_API_KEY is required');
-  }
+  const apiKey = config.apiKey || config.anthropicApiKey;
 
   // Initialize MCP clients
   const dealStoreClient = new DealStoreClient(config.mcpServerCommand);
@@ -68,6 +66,7 @@ export async function startIngestionAgent(config: {
   // Create and start monitor
   const monitor = createGmailMonitor(gmailTools, dealStoreTools, {
     anthropicApiKey: config.anthropicApiKey,
+    apiKey,
     pollIntervalMinutes: config.pollIntervalMinutes || 5,
     gmailQuery: config.gmailQuery,
     processUnreadOnly: config.processUnreadOnly !== false,
@@ -87,7 +86,10 @@ export async function startIngestionAgent(config: {
  */
 export async function main(): Promise<void> {
   try {
-    const anthropicApiKey = secrets.getAnthropicKey();
+    const anthropicApiKey =
+      process.env.AI_PROVIDER === 'anthropic' || !process.env.AI_PROVIDER
+        ? secrets.getAnthropicKey()
+        : undefined;
 
     const pollInterval = parseInt(process.env.POLL_INTERVAL_MINUTES || '5', 10);
     const gmailQuery = process.env.GMAIL_QUERY;

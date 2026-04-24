@@ -6,9 +6,13 @@ vi.mock('./redis.js', () => ({
 }));
 
 // Mock BullMQ — use a stable spy on the instance's add method
-const mockAdd = vi.fn().mockResolvedValue({ id: '1' });
+const { mockAdd } = vi.hoisted(() => ({
+  mockAdd: vi.fn().mockResolvedValue({ id: '1' }),
+}));
 vi.mock('bullmq', () => ({
-  Queue: vi.fn().mockImplementation(() => ({ add: mockAdd })),
+  Queue: vi.fn().mockImplementation(function Queue() {
+    return { add: mockAdd };
+  }),
 }));
 
 // Import after mocks

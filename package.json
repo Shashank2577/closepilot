@@ -14,6 +14,7 @@
     "mcp:dev": "pnpm --filter @closepilot/mcp-server dev",
     "api:dev": "pnpm --filter @closepilot/api dev",
     "web:dev": "pnpm --filter @closepilot/web dev",
+    "worker:dev": "tsx packages/agents/orchestrator/src/worker.ts",
     "typecheck": "pnpm --filter \"@closepilot/*\" --parallel tsc --noEmit"
   },
   "keywords": [

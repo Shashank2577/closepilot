@@ -186,9 +186,9 @@ dealsRoutes.post('/', async (c): Promise<Response> => {
     const newDeal = await createDeal(dealData);
     dealsCreatedCounter.inc();
 
-    // Kick off the agent pipeline asynchronously — don't await so the API responds immediately
-    enqueueAgentJob({ type: 'RunIngestion', dealId: String(newDeal.id) }).catch((err: unknown) =>
-      console.error('[API] Failed to enqueue ingestion job for deal', newDeal.id, err)
+    // Kick off enrichment immediately for newly created deals.
+    enqueueAgentJob({ type: 'RunEnrichment', dealId: String(newDeal.id) }).catch((err: unknown) =>
+      console.error('[API] Failed to enqueue enrichment job for deal', newDeal.id, err)
     );
 
     return c.json(newDeal, 201);

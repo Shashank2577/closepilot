@@ -1,4 +1,11 @@
-export type AgentJobType = 'RunIngestion' | 'RunEnrichment' | 'RunScoping' | 'RunProposal' | 'RunCRMSync';
+export type AgentJobType =
+  | 'RunEnrichment'
+  | 'RunOutreach'
+  | 'RunScoping'
+  | 'RunProposal'
+  | 'RunChase'
+  | 'RunPrep'
+  | 'RunCRMSync';
 
 export interface AgentJob {
   type: AgentJobType;

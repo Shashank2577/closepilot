@@ -53,6 +53,21 @@ export async function searchDeals(query: string): Promise<Deal[]> {
   return response.json() as Promise<Deal[]>;
 }
 
+export async function deleteDeal(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/deals/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error('Failed to delete deal');
+}
+
+export async function updateDeal(id: string, data: Partial<Pick<Deal, 'leadName' | 'leadCompany' | 'leadTitle' | 'leadEmail'>>): Promise<Deal> {
+  const response = await fetch(`${API_BASE}/api/deals/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('Failed to update deal');
+  return response.json() as Promise<Deal>;
+}
+
 export async function fetchDealsByStage(stage: DealStage): Promise<Deal[]> {
   const response = await fetch(`${API_BASE}/api/deals/stage/${stage}`);
   if (!response.ok) throw new Error('Failed to fetch deals by stage');

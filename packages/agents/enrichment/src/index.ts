@@ -1,19 +1,17 @@
 import { AgentInput, AgentOutput, DealStage, AgentType, EnrichmentContext } from '@closepilot/core';
-import { DataSources } from './data-sources';
 import { CompanyResearcher } from './company-researcher';
 import { ProspectResearcher } from './prospect-researcher';
 import { ActivityLogger } from './activity-logger';
+import { scoreICP } from './icp-scorer';
 
 export class EnrichmentAgent {
-  private dataSources: DataSources;
   private companyResearcher: CompanyResearcher;
   private prospectResearcher: ProspectResearcher;
   public logger: ActivityLogger;
 
   constructor() {
-    this.dataSources = new DataSources();
-    this.companyResearcher = new CompanyResearcher(this.dataSources);
-    this.prospectResearcher = new ProspectResearcher(this.dataSources);
+    this.companyResearcher = new CompanyResearcher();
+    this.prospectResearcher = new ProspectResearcher();
     this.logger = new ActivityLogger();
   }
 
@@ -51,7 +49,12 @@ export class EnrichmentAgent {
       // 2. Research Prospect
       this.logger.log(dealId, 'Starting prospect research', { name: deal.leadName, company: deal.leadCompany });
       try {
-        const prospectResearch = await this.prospectResearcher.research(deal.leadName, deal.leadCompany);
+        const prospectResearch = await this.prospectResearcher.research(
+          deal.leadName,
+          deal.leadCompany,
+          deal.leadTitle,
+          JSON.stringify(input.context || {})
+        );
         deal.prospectResearch = prospectResearch;
         this.logger.log(dealId, 'Completed prospect research', prospectResearch);
       } catch (error: any) {
@@ -60,6 +63,9 @@ export class EnrichmentAgent {
       }
 
       const success = errors.length === 0;
+      const icpScore = scoreICP(deal.companyResearch, deal.prospectResearch);
+      (deal as any).icpScore = icpScore;
+      this.logger.log(dealId, 'ICP scoring completed', icpScore);
 
       if (success) {
         // Update stage if successful
@@ -109,7 +115,7 @@ export class EnrichmentAgent {
 }
 
 // Export dependencies for testing/usage
-export * from './data-sources';
 export * from './company-researcher';
 export * from './prospect-researcher';
+export * from './icp-scorer';
 export * from './activity-logger';
